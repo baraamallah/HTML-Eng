@@ -26,7 +26,7 @@ export default function AboutPage() {
                 width={600}
                 height={400}
                 className="object-cover w-full h-full"
-                data-ai-hint="developers collaborating office"
+                data-ai-hint="team office"
               />
           </div>
           <div className="md:w-1/2 p-6 md:p-8">
