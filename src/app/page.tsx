@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_CHALLENGES } from '@/lib/constants';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import { ProjectCard } from '@/components/project-card';
+// ProjectCard is already using useIntersectionObserver
 import { Award, Target, BrainCircuit } from 'lucide-react';
 import { useRef } from 'react';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
@@ -28,11 +28,6 @@ export default function HomePage() {
   const challengesRef = useRef<HTMLElement>(null);
   const challengesEntry = useIntersectionObserver(challengesRef, { threshold: 0.1, freezeOnceVisible: false });
   const isChallengesVisible = !!challengesEntry?.isIntersecting;
-
-  // For BrushStrokeDividers, we can also animate them if needed, or leave as is
-  // For simplicity, I'm focusing on the main sections first.
-  // To animate BrushStrokeDividers, they'd need their own refs and observer logic,
-  // or be wrapped in an animatable component.
 
   return (
     <div className="space-y-12">
@@ -56,11 +51,9 @@ export default function HomePage() {
       <BrushStrokeDivider 
         className={cn(
             "mx-auto h-8 w-40 text-primary/50",
-            // Example if we want to animate it too, would need its own observer
-            // isSomeOtherTriggerVisible ? 'animate-fade-in-up' : 'opacity-0'
-            "animate-fade-in-up" // Keeping existing one-time animation for now
+            isHeroVisible ? 'animate-fade-in-up' : 'opacity-0' // Trigger with hero visibility for cascading effect
         )}
-        style={{ animationDelay: '0.1s' }} 
+        style={isHeroVisible ? { animationDelay: '0.1s' } : { opacity: 0 }} 
       />
 
       {featuredCreator && featuredProject && (
@@ -68,7 +61,8 @@ export default function HomePage() {
           ref={featuredCreatorRef}
           id="featured-creator"
           className={cn(
-            isFeaturedCreatorVisible ? 'animate-fade-in-up' : 'opacity-0'
+            "transition-opacity duration-700 ease-out",
+            isFeaturedCreatorVisible ? 'animate-fade-in-up opacity-100' : 'opacity-0'
           )}
           style={isFeaturedCreatorVisible ? { animationDelay: '0.2s' } : { opacity: 0 }}
         >
@@ -77,7 +71,7 @@ export default function HomePage() {
             <div className="md:flex">
               <div className="md:w-1/3 relative">
                 <Image
-                  src={featuredCreator.photoUrl}
+                  src={featuredCreator.photoUrl} // Will use placeholder from constants
                   alt={featuredCreator.name}
                   width={300}
                   height={300}
@@ -95,7 +89,7 @@ export default function HomePage() {
                   <h4 className="font-semibold text-accent mb-2">Featured Project: "{featuredProject.title}"</h4>
                   <Link href={`/gallery?project=${featuredProject.id}`}>
                     <Image 
-                      src={featuredProject.previewImageUrl} 
+                      src={featuredProject.previewImageUrl} // Will use placeholder from constants
                       alt={featuredProject.title} 
                       width={200} 
                       height={150} 
@@ -116,35 +110,34 @@ export default function HomePage() {
       )}
       
       <BrushStrokeDivider 
-        className="mx-auto h-8 w-40 text-primary/50 animate-fade-in-up"
-        style={{ animationDelay: '0.3s' }}
+        className={cn(
+          "mx-auto h-8 w-40 text-primary/50",
+           isFeaturedCreatorVisible ? 'animate-fade-in-up' : 'opacity-0'  // Trigger with featured creator visibility
+        )}
+        style={isFeaturedCreatorVisible ? { animationDelay: '0.1s' } : { opacity: 0 }} // Shorter delay relative to its trigger
       />
 
       <section
         ref={challengesRef}
         id="coding-challenges"
         className={cn(
-          isChallengesVisible ? 'animate-fade-in-up' : 'opacity-0'
+          "transition-opacity duration-700 ease-out",
+          isChallengesVisible ? 'animate-fade-in-up opacity-100' : 'opacity-0'
         )}
-        style={isChallengesVisible ? { animationDelay: '0.4s' } : { opacity: 0 }}
+        style={isChallengesVisible ? { animationDelay: '0.2s' } : { opacity: 0 }}
       >
         <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><BrainCircuit className="w-8 h-8 text-accent"/> Coding & Design Challenges</h2>
         <div className="grid md:grid-cols-2 gap-6">
           {MOCK_CHALLENGES.map((challenge, index) => {
-            // Individual challenge cards could also use the ProjectCard animation pattern
-            // For now, the parent section animates.
+            // Individual challenge cards will animate based on the parent section's visibility
             return (
             <Card 
               key={challenge.id} 
               className={cn(
                 "shadow-lg hover:shadow-xl transition-shadow duration-300",
-                // If we want individual card animation based on scroll:
-                // isChallengesVisible ? 'animate-fade-in-up' : 'opacity-0'
-                // This would require each card to be observed or a more complex setup.
-                // For now, inherit animation from parent section or use a simpler one-time animation.
-                 "animate-fade-in-up" // Existing one-time animation for items within the already animated section
+                isChallengesVisible ? 'animate-fade-in-up' : 'opacity-0' 
               )}
-              style={{ animationDelay: `${0.1 + index * 0.1}s` }} // Stagger based on parent visibility
+              style={{ animationDelay: `${0.1 + index * 0.15}s` }} // Stagger based on parent visibility
             >
               <CardHeader>
                 <CardTitle className="text-2xl text-primary">{challenge.title}</CardTitle>

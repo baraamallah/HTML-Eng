@@ -3,18 +3,16 @@ import type { Project, Creator, Category, ProjectChallenge } from '@/types';
 
 export const CATEGORIES: Category[] = ['Web App', 'Mobile App', 'UI/UX Design', 'Code Snippet', 'Open Source Project'];
 
-const getUnsplashUrl = (width: number, height: number, hint?: string): string => {
-  const defaultHint = "technology abstract";
-  const actualHint = hint || defaultHint;
-  const searchTerms = actualHint.replace(/ /g, ',');
-  return `https://source.unsplash.com/${width}x${height}/?${searchTerms}`;
+// Using simple placeholder URLs now, data-ai-hint will serve as the prompt for generation
+const getPlaceholderUrl = (width: number, height: number): string => {
+  return `https://placehold.co/${width}x${height}.png`;
 };
 
 export const MOCK_CREATORS: Creator[] = [
   {
     id: 'dev1',
     name: 'Alice Wonderland',
-    photoUrl: getUnsplashUrl(200, 200, 'female developer'),
+    photoUrl: getPlaceholderUrl(200, 200), // Changed from Unsplash
     dataAiHint: 'female developer',
     location: 'Silicon Valley, CA',
     bio: 'Full-stack developer with a passion for creating intuitive web applications. Loves Next.js and serverless architectures.',
@@ -25,7 +23,7 @@ export const MOCK_CREATORS: Creator[] = [
   {
     id: 'des2',
     name: 'Bob Byte',
-    photoUrl: getUnsplashUrl(200, 200, 'male designer'),
+    photoUrl: getPlaceholderUrl(200, 200), // Changed from Unsplash
     dataAiHint: 'male designer',
     location: 'Austin, TX',
     bio: 'UI/UX designer focused on human-centered design. Expert in Figma and creating delightful user experiences for mobile apps.',
@@ -41,7 +39,7 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Ecoleta - Recycling Finder',
     description: 'A web application helping users find nearby recycling points for various materials. Built with Next.js, TypeScript, and Mapbox.',
     tags: ['web app', 'nextjs', 'typescript', 'sustainability', 'maps'],
-    previewImageUrl: getUnsplashUrl(600, 400, 'app map'),
+    previewImageUrl: getPlaceholderUrl(600, 400), // Changed from Unsplash
     dataAiHint: 'app map',
     category: 'Web App',
     creatorId: 'dev1',
@@ -56,7 +54,7 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Zenith Mobile Banking UI Kit',
     description: 'A comprehensive UI kit for a modern mobile banking application, designed in Figma. Includes 50+ screens and components.',
     tags: ['ui kit', 'figma', 'mobile app', 'fintech', 'design system'],
-    previewImageUrl: getUnsplashUrl(600, 400, 'mobile design'),
+    previewImageUrl: getPlaceholderUrl(600, 400), // Changed from Unsplash
     dataAiHint: 'mobile design',
     category: 'UI/UX Design',
     creatorId: 'des2',
@@ -70,7 +68,7 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Python Web Scraper for News',
     description: 'A Python script that scrapes headlines from various news websites using BeautifulSoup and Requests.',
     tags: ['python', 'web scraping', 'automation', 'script', 'data'],
-    previewImageUrl: getUnsplashUrl(600, 400, 'code editor'),
+    previewImageUrl: getPlaceholderUrl(600, 400), // Changed from Unsplash
     dataAiHint: 'code editor',
     category: 'Code Snippet',
     creatorId: 'dev1',
@@ -84,7 +82,7 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'My Awesome App',
     description: 'An innovative mobile application for task management, built with React Native and Firebase.',
     tags: ['mobile app', 'react native', 'firebase', 'productivity'],
-    previewImageUrl: getUnsplashUrl(600, 400, 'mobile interface'),
+    previewImageUrl: getPlaceholderUrl(600, 400), // Changed from Unsplash
     dataAiHint: 'mobile interface',
     category: 'Mobile App',
     creatorId: 'des2', 
@@ -99,7 +97,7 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Markdown Editor Library',
     description: 'A lightweight, embeddable Markdown editor component built with Svelte. Open source and community-driven.',
     tags: ['open source', 'javascript', 'markdown', 'library', 'svelte'],
-    previewImageUrl: getUnsplashUrl(600, 400, 'web interface'),
+    previewImageUrl: getPlaceholderUrl(600, 400), // Changed from Unsplash
     dataAiHint: 'web interface',
     category: 'Open Source Project',
     creatorId: 'dev1',

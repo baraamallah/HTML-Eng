@@ -22,8 +22,8 @@ export default function AboutPage() {
         <div className="md:flex">
           <div className="md:w-1/2">
              <Image
-                src={`https://source.unsplash.com/600x400/?${aboutImageHint.replace(/ /g, ',')}`}
-                alt="Diverse group of developers collaborating"
+                src="https://placehold.co/600x400.png" // Changed from Unsplash
+                alt="Placeholder image representing a collaborative team or office environment"
                 width={600}
                 height={400}
                 className="object-cover w-full h-full"
