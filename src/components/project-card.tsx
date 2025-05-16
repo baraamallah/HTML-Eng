@@ -1,10 +1,15 @@
 
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Project } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Eye, Github, ExternalLink } from 'lucide-react';
+import { useRef } from 'react';
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
+import { cn } from '@/lib/utils';
 
 interface ProjectCardProps {
   project: Project;
@@ -12,13 +17,21 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const entry = useIntersectionObserver(cardRef, { threshold: 0.1, freezeOnceVisible: false });
+  const isVisible = !!entry?.isIntersecting;
+
   return (
     <Card 
-      className="group overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out flex flex-col h-full animate-fade-in-up"
-      style={{ animationDelay: animationDelay || '0s' }}
+      ref={cardRef}
+      className={cn(
+        "group overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out flex flex-col h-full",
+        isVisible ? 'animate-fade-in-up' : 'opacity-0'
+      )}
+      style={isVisible ? { animationDelay: animationDelay || '0s' } : { opacity: 0 }}
     >
       <CardHeader className="p-0 relative">
-        <Link href={`/gallery?project=${project.id}`}> {/* This could link to a modal or detailed page later */}
+        <Link href={`/gallery?project=${project.id}`}>
             <Image
               src={project.previewImageUrl}
               alt={project.title}
