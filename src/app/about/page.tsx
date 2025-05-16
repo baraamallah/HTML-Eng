@@ -22,7 +22,7 @@ export default function AboutPage() {
         <div className="md:flex">
           <div className="md:w-1/2">
              <Image
-                src={`https://source.unsplash.com/random/600x400/?${aboutImageHint.split(' ').join(',')}`}
+                src="/img/about-team-office.png" // Updated path
                 alt="Image representing a collaborative team or office environment"
                 width={600}
                 height={400}
