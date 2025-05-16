@@ -16,16 +16,16 @@ export default function Navbar() {
             <Link href="/">Home</Link>
           </Button>
           <Button variant="ghost" asChild>
-            <Link href="/gallery">Showcase</Link> {/* Changed from Gallery */}
+            <Link href="/gallery">Showcase</Link>
           </Button>
           <Button variant="ghost" asChild>
-            <Link href="/artists">Creators</Link> {/* Changed from Artists */}
+            <Link href="/artists">Creators</Link>
           </Button>
           <Button variant="ghost" asChild>
             <Link href="/about">About</Link>
           </Button>
           <Button variant="default" asChild className="pulse-gentle">
-            <Link href="/upload">Share Project</Link> {/* Changed from Upload Art */}
+            <Link href="/upload">Share Project</Link>
           </Button>
         </div>
       </div>
