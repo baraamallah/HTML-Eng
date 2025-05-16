@@ -2,39 +2,36 @@
 'use client';
 
 import { useState } from 'react';
-import { ArtworkCard } from '@/components/artwork-card';
-import { MOCK_ARTWORKS, CATEGORIES } from '@/lib/constants';
-import type { Artwork, Category } from '@/types';
+import { ProjectCard } from '@/components/project-card';
+import { MOCK_PROJECTS, CATEGORIES } from '@/lib/constants';
+import type { Project, Category } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ListFilter, Palette, CalendarDays, TrendingUp, Search, Edit3, Camera, Laptop, Blend } from 'lucide-react'; // Added Edit3, Camera, Laptop, Blend
-
+import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, TrendingUp, Search } from 'lucide-react';
 
 const CategoryIcon = ({ category }: { category: Category }) => {
   switch (category) {
-    case 'Painting': return <Palette className="w-4 h-4 mr-2" />;
-    case 'Drawing': return <Edit3 className="w-4 h-4 mr-2" />; 
-    case 'Photography': return <Camera className="w-4 h-4 mr-2"/>;
-    case 'Digital Art': return <Laptop className="w-4 h-4 mr-2"/>;
-    case 'Mixed Media': return <Blend className="w-4 h-4 mr-2"/>;
+    case 'Web App': return <Code2 className="w-4 h-4 mr-2" />;
+    case 'Mobile App': return <Smartphone className="w-4 h-4 mr-2" />;
+    case 'UI/UX Design': return <DraftingCompass className="w-4 h-4 mr-2" />;
+    case 'Code Snippet': return <FileJson className="w-4 h-4 mr-2" />;
+    case 'Open Source Project': return <GitFork className="w-4 h-4 mr-2" />;
     default: return null;
   }
 };
-
 
 export default function GalleryPage() {
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'popularity'>('date');
 
-  const filteredArtworks = MOCK_ARTWORKS.filter(artwork => {
-    const categoryMatch = activeCategory === 'All' || artwork.category === activeCategory;
-    const searchMatch = artwork.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        artwork.artistName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        artwork.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredProjects = MOCK_PROJECTS.filter(project => {
+    const categoryMatch = activeCategory === 'All' || project.category === activeCategory;
+    const searchMatch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        project.creatorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        project.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     return categoryMatch && searchMatch;
   }).sort((a, b) => {
     if (sortBy === 'date') {
@@ -47,8 +44,8 @@ export default function GalleryPage() {
   return (
     <div className="space-y-8">
       <header className="text-center animate-fade-in-up">
-        <h1 className="text-4xl font-bold text-primary mb-2">Art Gallery</h1>
-        <p className="text-lg text-foreground/80">Explore a diverse collection of artworks from our talented artists.</p>
+        <h1 className="text-4xl font-bold text-primary mb-2">Project Showcase</h1>
+        <p className="text-lg text-foreground/80">Explore a diverse collection of projects from our talented creators.</p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
 
@@ -68,7 +65,7 @@ export default function GalleryPage() {
         <div className="relative flex-grow">
           <Input 
             type="search" 
-            placeholder="Search by title, artist, or tag..." 
+            placeholder="Search by title, creator, or tag..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -84,21 +81,20 @@ export default function GalleryPage() {
             <SelectItem value="popularity" className="flex items-center"><TrendingUp className="w-4 h-4 mr-2" />Popularity</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" className="w-full md:w-auto flex items-center"><Palette className="w-4 h-4 mr-2" />Filter by Color</Button>
       </div>
 
-      {filteredArtworks.length > 0 ? (
+      {filteredProjects.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredArtworks.map((artwork, index) => (
-            <ArtworkCard 
-              key={artwork.id} 
-              artwork={artwork} 
+          {filteredProjects.map((project, index) => (
+            <ProjectCard
+              key={project.id} 
+              project={project}
               animationDelay={`${0.4 + index * 0.05}s`}
             />
           ))}
         </div>
       ) : (
-        <p className="text-center text-muted-foreground py-12 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>No artworks found matching your criteria. Try adjusting your filters or search term.</p>
+        <p className="text-center text-muted-foreground py-12 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>No projects found matching your criteria. Try adjusting your filters or search term.</p>
       )}
     </div>
   );

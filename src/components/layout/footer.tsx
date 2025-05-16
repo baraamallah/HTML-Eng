@@ -1,4 +1,5 @@
-import { BrushStrokeDivider } from "@/components/icons/brush-stroke-divider";
+
+import { BrushStrokeDivider } from "@/components/icons/brush-stroke-divider"; // Keep for thematic flair or replace later
 
 export default function Footer() {
   return (
@@ -6,10 +7,10 @@ export default function Footer() {
       <div className="container mx-auto px-4 text-center">
         <BrushStrokeDivider className="mx-auto mb-4 h-6 w-32 text-muted-foreground" />
         <p className="text-sm">
-          &copy; {new Date().getFullYear()} Artful Aging. Celebrating creativity at every age.
+          &copy; {new Date().getFullYear()} DevPortfolio Hub. Empowering developers and designers.
         </p>
         <p className="text-xs mt-2 text-muted-foreground">
-          Designed with love for senior artists.
+          Built for the creative tech community.
         </p>
       </div>
     </footer>

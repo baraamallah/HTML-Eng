@@ -4,15 +4,15 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import { Users, Target, Palette, Sparkles } from 'lucide-react';
+import { Users, Target, Code2, Component, Sparkles, Terminal } from 'lucide-react'; // Updated icons
 
 export default function AboutPage() {
   return (
     <div className="space-y-12">
       <header className="text-center animate-fade-in-up">
-        <h1 className="text-4xl font-bold text-primary mb-2">About Artful Aging</h1>
+        <h1 className="text-4xl font-bold text-primary mb-2">About DevPortfolio Hub</h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
-          Discover the story and passion behind our community dedicated to senior artists.
+          Discover the vision behind our platform for developers and designers.
         </p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
@@ -22,11 +22,11 @@ export default function AboutPage() {
           <div className="md:w-1/2">
              <Image
                 src="https://placehold.co/600x400.png"
-                alt="Group of seniors painting together"
+                alt="Diverse group of developers collaborating"
                 width={600}
                 height={400}
                 className="object-cover w-full h-full"
-                data-ai-hint="seniors art class"
+                data-ai-hint="developers collaborating office"
               />
           </div>
           <div className="md:w-1/2 p-6 md:p-8">
@@ -37,10 +37,10 @@ export default function AboutPage() {
             </CardHeader>
             <CardContent className="space-y-4 text-foreground/90">
               <p>
-                At Artful Aging, we believe that creativity knows no age. Our mission is to provide a vibrant and supportive digital space where senior artists can share their work, connect with peers, and continue to explore their passion for the arts.
+                At DevPortfolio Hub, we believe in the power of code and design to shape the future. Our mission is to provide a dynamic and supportive digital space where developers and designers can showcase their projects, connect with peers, and continuously innovate.
               </p>
               <p>
-                We aim to combat isolation and foster a sense of community by celebrating the unique talents and stories of older adults. Art is a powerful tool for expression, joy, and lifelong learning, and we're here to champion that every step of the way.
+                We aim to foster a vibrant community by celebrating the diverse talents and groundbreaking work of tech creators. Whether you're building the next big app, designing stunning UIs, or crafting elegant code, DevPortfolio Hub is your platform to shine.
               </p>
             </CardContent>
           </div>
@@ -53,10 +53,10 @@ export default function AboutPage() {
         </h2>
         <div className="grid md:grid-cols-2 gap-6">
           {[
-            { icon: Palette, title: "Showcase Your Talent", description: "A beautiful gallery to display your artwork and dedicated artist profiles to share your journey." },
-            { icon: Users, title: "Connect & Inspire", description: "Join a welcoming community of fellow senior artists, share feedback, and find inspiration." },
-            { icon: Target, title: "Engage & Grow", description: "Participate in fun art challenges, discover new techniques, and keep your creative spirit alive." },
-            { icon: Sparkles, title: "Easy to Use", description: "Our platform is designed to be user-friendly and accessible for everyone." },
+            { icon: Component, title: "Showcase Your Projects", description: "A polished gallery to display your applications, designs, and code snippets with dedicated creator profiles." },
+            { icon: Users, title: "Connect & Collaborate", description: "Join a welcoming community of fellow tech creators, share feedback, and find inspiration or collaborators." },
+            { icon: Terminal, title: "Engage & Grow", description: "Participate in coding challenges, discover new technologies, and keep your skills sharp." },
+            { icon: Code2, title: "Developer-Friendly", description: "Our platform is designed for ease of use, allowing you to focus on what you do best: creating." },
           ].map((item, index) => (
             <Card 
               key={item.title} 
@@ -75,16 +75,16 @@ export default function AboutPage() {
       </section>
 
       <Card className="text-center p-8 bg-gradient-to-br from-primary/10 to-accent/10 shadow-xl animate-fade-in-up" style={{ animationDelay: '0.9s' }}>
-        <CardTitle className="text-3xl text-primary mb-4">Join Our Creative Family</CardTitle>
+        <CardTitle className="text-3xl text-primary mb-4">Join Our Innovative Community</CardTitle>
         <CardDescription className="text-lg text-foreground/80 mb-6">
-          Whether you're a lifelong artist or have just discovered your passion, Artful Aging is your space to shine.
+          Whether you're a seasoned pro or just starting your journey in tech, DevPortfolio Hub is your space to grow and get noticed.
         </CardDescription>
         <div className="space-x-4">
           <Button size="lg" asChild className="pulse-gentle">
-            <Link href="/gallery">Explore the Gallery</Link>
+            <Link href="/gallery">Explore Project Showcase</Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
-            <Link href="/upload">Share Your Art</Link>
+            <Link href="/upload">Share Your Project</Link>
           </Button>
         </div>
       </Card>

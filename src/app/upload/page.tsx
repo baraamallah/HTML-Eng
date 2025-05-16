@@ -14,30 +14,34 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CATEGORIES } from '@/lib/constants';
 import type { Category } from '@/types';
-import { generateArtDescriptionAction } from './actions';
+import { generateProjectDetailsAction } from './actions'; // Renamed action
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Palette, Camera, PenTool, Laptop, Blend, Loader2, Sparkles, Edit3, CheckCircle } from 'lucide-react';
+import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Sparkles, Edit3, CheckCircle, ExternalLink } from 'lucide-react'; // Updated icons
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import { cn } from '@/lib/utils'; // Import cn utility
+import { cn } from '@/lib/utils';
 
-const artworkSchema = z.object({
+// Updated schema for Project
+const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().optional(),
   tags: z.string().optional(), // Comma-separated string
   category: z.enum(CATEGORIES, { required_error: 'Please select a category' }),
-  image: z.any().refine(fileList => fileList && fileList.length === 1, 'Image is required.'),
+  image: z.any().refine(fileList => fileList && fileList.length === 1, 'Preview image is required.'), // "Preview Image"
+  projectUrl: z.string().url({ message: "Please enter a valid URL (e.g., GitHub, live demo)" }).optional().or(z.literal('')),
+  techStack: z.string().optional(), // Comma-separated string for tech stack
 });
 
-type ArtworkFormData = z.infer<typeof artworkSchema>;
+type ProjectFormData = z.infer<typeof projectSchema>; // Renamed from ArtworkFormData
 
+// Updated CategoryIcon
 const CategoryIcon = ({ category, className }: { category: Category, className?: string }) => {
   const props = { className: cn("w-5 h-5", className) };
   switch (category) {
-    case 'Painting': return <Palette {...props} />;
-    case 'Drawing': return <PenTool {...props} />;
-    case 'Photography': return <Camera {...props} />;
-    case 'Digital Art': return <Laptop {...props} />;
-    case 'Mixed Media': return <Blend {...props} />;
+    case 'Web App': return <Code2 {...props} />;
+    case 'Mobile App': return <Smartphone {...props} />;
+    case 'UI/UX Design': return <DraftingCompass {...props} />;
+    case 'Code Snippet': return <FileJson {...props} />;
+    case 'Open Source Project': return <GitFork {...props} />;
     default: return null;
   }
 };
@@ -46,20 +50,21 @@ export default function UploadPage() {
   const { toast } = useToast();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [step, setStep] = useState(1); // 1: Upload, 2: Details, 3: Confirm
+  const [step, setStep] = useState(1); // 1: Upload Preview, 2: Details, 3: Confirm
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<ArtworkFormData>({
-    resolver: zodResolver(artworkSchema),
+  const form = useForm<ProjectFormData>({ // Renamed
+    resolver: zodResolver(projectSchema),
     defaultValues: {
       title: '',
       description: '',
       tags: '',
+      projectUrl: '',
+      techStack: '',
     },
   });
 
-  useEffect(() => {
-    // Auto-save to localStorage (simplified version)
+   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
         localStorage.setItem('uploadFormDraft', JSON.stringify(value));
@@ -71,12 +76,10 @@ export default function UploadPage() {
   }, [form]);
 
   useEffect(() => {
-    // Load from localStorage
     try {
       const draft = localStorage.getItem('uploadFormDraft');
       if (draft) {
         const parsedDraft = JSON.parse(draft);
-        // Don't load file input from draft
         const { image, ...restOfDraft } = parsedDraft;
         form.reset(restOfDraft);
       }
@@ -93,7 +96,7 @@ export default function UploadPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
-        setStep(2); // Move to details step
+        setStep(2); 
       };
       reader.readAsDataURL(file);
     }
@@ -101,29 +104,29 @@ export default function UploadPage() {
 
   const handleAIDescription = async () => {
     if (!previewUrl) {
-      toast({ title: 'Error', description: 'Please upload an image first.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Please upload a preview image first.', variant: 'destructive' });
       return;
     }
     setIsGenerating(true);
     try {
-      const result = await generateArtDescriptionAction(previewUrl);
+      // The underlying AI flow still expects an image.
+      const result = await generateProjectDetailsAction(previewUrl); 
       if (result.description) form.setValue('description', result.description);
       if (result.tags) form.setValue('tags', result.tags.join(', '));
       toast({ title: 'AI Assistance', description: 'Description and tags generated!' });
     } catch (error) {
-      toast({ title: 'AI Error', description: 'Could not generate description. Please try again or write your own.', variant: 'destructive' });
+      toast({ title: 'AI Error', description: 'Could not generate details. Please try again or write your own.', variant: 'destructive' });
     } finally {
       setIsGenerating(false);
     }
   };
   
-  const onSubmit = (data: ArtworkFormData) => {
-    console.log('Artwork Data:', data);
-    // Here you would typically send data to your backend
+  const onSubmit = (data: ProjectFormData) => { // Renamed
+    console.log('Project Data:', data);
     toast({ 
-      title: 'Upload Successful!', 
-      description: `"${data.title}" has been added to the gallery.`,
-      className: "bg-accent text-accent-foreground border-accent" // High-contrast success
+      title: 'Project Upload Successful!', 
+      description: `"${data.title}" has been added to the showcase.`,
+      className: "bg-accent text-accent-foreground border-accent"
     });
     form.reset();
     setPreviewUrl(null);
@@ -136,8 +139,8 @@ export default function UploadPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <header className="text-center animate-fade-in-up">
-        <h1 className="text-4xl font-bold text-primary mb-2">Share Your Art</h1>
-        <p className="text-lg text-foreground/80">Follow the steps to upload your masterpiece.</p>
+        <h1 className="text-4xl font-bold text-primary mb-2">Share Your Project</h1> {/* Updated title */}
+        <p className="text-lg text-foreground/80">Follow the steps to add your project to the showcase.</p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
       
@@ -145,16 +148,15 @@ export default function UploadPage() {
         <div className="w-full bg-muted rounded-full h-2.5">
           <div className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${currentProgress}%` }}></div>
         </div>
-        <p className="text-sm text-center text-muted-foreground mt-2">Step {step} of 3: {step === 1 ? "Upload Image" : step === 2 ? "Add Details" : "Confirm & Submit"}</p>
+        <p className="text-sm text-center text-muted-foreground mt-2">Step {step} of 3: {step === 1 ? "Upload Preview Image" : step === 2 ? "Add Details" : "Confirm & Submit"}</p>
       </div>
-
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {step === 1 && (
            <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2"><UploadCloud className="text-primary w-7 h-7"/>Select Image</CardTitle>
-              <CardDescription>Choose a high-quality image of your artwork. JPG, PNG, or GIF accepted.</CardDescription>
+              <CardTitle className="text-2xl flex items-center gap-2"><UploadCloud className="text-primary w-7 h-7"/>Select Preview Image</CardTitle>
+              <CardDescription>Choose a high-quality image for your project (e.g., screenshot, logo). JPG, PNG, or GIF accepted.</CardDescription>
             </CardHeader>
             <CardContent>
               <div
@@ -164,7 +166,6 @@ export default function UploadPage() {
                   e.preventDefault();
                   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                     fileInputRef.current!.files = e.dataTransfer.files;
-                    // Create a new change event and dispatch it
                     const changeEvent = new Event('change', { bubbles: true });
                     fileInputRef.current!.dispatchEvent(changeEvent);
                   }
@@ -199,15 +200,15 @@ export default function UploadPage() {
         {(step === 2 || step === 3) && previewUrl && (
           <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
              <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2"><Edit3 className="text-primary w-7 h-7"/>Add Details</CardTitle>
-              <CardDescription>Provide information about your artwork. Use the AI assistant for help!</CardDescription>
+              <CardTitle className="text-2xl flex items-center gap-2"><Edit3 className="text-primary w-7 h-7"/>Add Project Details</CardTitle>
+              <CardDescription>Provide information about your project. Use the AI assistant for help with description and tags!</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                <div className="flex justify-center mb-4">
-                  <Image src={previewUrl} alt="Artwork preview" width={200} height={200} className="rounded-md shadow-md object-contain max-h-64" />
+                  <Image src={previewUrl} alt="Project preview" width={200} height={200} className="rounded-md shadow-md object-contain max-h-64" />
                 </div>
               <div>
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">Project Title</Label>
                 <Input id="title" {...form.register('title')} disabled={step === 3} />
                 {form.formState.errors.title && <p className="text-sm font-medium text-destructive">{form.formState.errors.title.message}</p>}
               </div>
@@ -240,21 +241,35 @@ export default function UploadPage() {
                 />
                 {form.formState.errors.category && <p className="text-sm font-medium text-destructive mt-1">{form.formState.errors.category.message}</p>}
               </div>
+              
+              <div>
+                <Label htmlFor="projectUrl">Project URL (Optional)</Label>
+                <div className="relative">
+                <Input id="projectUrl" {...form.register('projectUrl')} disabled={step === 3} placeholder="e.g., https://github.com/yourname/project or https://live-demo.com" className="pl-8" />
+                <ExternalLink className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+                {form.formState.errors.projectUrl && <p className="text-sm font-medium text-destructive">{form.formState.errors.projectUrl.message}</p>}
+              </div>
 
               <div>
                 <div className="flex justify-between items-center">
-                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Label htmlFor="description">Description / README (Optional)</Label>
                   <Button type="button" size="sm" variant="outline" onClick={handleAIDescription} disabled={isGenerating || step === 3} className="flex items-center gap-1 text-xs">
                     {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                     AI Assist
                   </Button>
                 </div>
-                <Textarea id="description" {...form.register('description')} rows={4} disabled={step === 3 || isGenerating} placeholder="E.g., A vibrant watercolor painting capturing..." />
+                <Textarea id="description" {...form.register('description')} rows={4} disabled={step === 3 || isGenerating} placeholder="Describe your project, its features, and purpose. Markdown is supported for READMEs." />
+              </div>
+
+              <div>
+                <Label htmlFor="techStack">Tech Stack (Optional, comma-separated)</Label>
+                <Input id="techStack" {...form.register('techStack')} disabled={step === 3} placeholder="E.g., React, Node.js, Python, Figma" />
               </div>
 
               <div>
                 <Label htmlFor="tags">Tags (Optional, comma-separated)</Label>
-                <Input id="tags" {...form.register('tags')} disabled={step === 3 || isGenerating} placeholder="E.g., sunset, landscape, watercolor" />
+                <Input id="tags" {...form.register('tags')} disabled={step === 3 || isGenerating} placeholder="E.g., full-stack, ui-design, machine-learning, game-dev" />
               </div>
             </CardContent>
              <CardFooter className="flex justify-between">
@@ -267,9 +282,21 @@ export default function UploadPage() {
         {step === 3 && previewUrl && (
             <Card className="shadow-xl bg-gradient-to-br from-primary/5 to-accent/5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <CardHeader>
-                    <CardTitle className="text-2xl flex items-center gap-2"><CheckCircle className="text-green-500 w-7 h-7"/>Confirm & Submit</CardTitle>
-                    <CardDescription>Review your artwork details before finalizing the upload.</CardDescription>
+                    <CardTitle className="text-2xl flex items-center gap-2"><CheckCircle className="text-green-500 w-7 h-7"/>Confirm & Submit Project</CardTitle>
+                    <CardDescription>Review your project details before finalizing.</CardDescription>
                 </CardHeader>
+                 {/* Display a summary of the entered data for confirmation */}
+                <CardContent className="space-y-3 text-sm">
+                    <h3 className="font-semibold text-lg">Summary:</h3>
+                    <div className="p-3 border rounded-md bg-background/50">
+                        <p><strong>Title:</strong> {form.getValues('title')}</p>
+                        <p><strong>Category:</strong> {form.getValues('category')}</p>
+                        {form.getValues('projectUrl') && <p><strong>Project URL:</strong> <Link href={form.getValues('projectUrl')!} target="_blank" className="text-primary hover:underline">{form.getValues('projectUrl')}</Link></p>}
+                        {form.getValues('techStack') && <p><strong>Tech Stack:</strong> {form.getValues('techStack')}</p>}
+                        {form.getValues('description') && <p className="mt-2"><strong>Description:</strong><br/><span className="text-muted-foreground line-clamp-3 whitespace-pre-line">{form.getValues('description')}</span></p>}
+                        {form.getValues('tags') && <p className="mt-1"><strong>Tags:</strong> {form.getValues('tags')}</p>}
+                    </div>
+                </CardContent>
                 <CardFooter className="flex justify-between">
                     <Button type="button" variant="outline" onClick={() => setStep(2)}>Edit Details</Button>
                     <Button type="submit" size="lg" className="pulse-gentle">Finalize Upload</Button>

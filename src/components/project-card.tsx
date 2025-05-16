@@ -1,17 +1,17 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import type { Project } from '@/types'; // Changed from Artwork
+import type { Project } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Eye, Github, ExternalLink } from 'lucide-react'; // Changed Heart to Eye, added Github/ExternalLink
+import { Eye, Github, ExternalLink } from 'lucide-react';
 
-interface ProjectCardProps { // Renamed from ArtworkCardProps
-  project: Project; // Renamed from artwork
+interface ProjectCardProps {
+  project: Project;
   animationDelay?: string;
 }
 
-export function ProjectCard({ project, animationDelay }: ProjectCardProps) { // Renamed from ArtworkCard
+export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
   return (
     <Card 
       className="group overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out flex flex-col h-full animate-fade-in-up"
@@ -20,13 +20,13 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) { // 
       <CardHeader className="p-0 relative">
         <Link href={`/gallery?project=${project.id}`}> {/* This could link to a modal or detailed page later */}
             <Image
-              src={project.previewImageUrl} // Changed from imageUrl
+              src={project.previewImageUrl}
               alt={project.title}
               width={300}
               height={200} 
               className="w-full object-cover transition-transform duration-300 group-hover:scale-110"
               style={{ minWidth: '300px' }}
-              data-ai-hint={project.dataAiHint || "project preview"} // Updated data-ai-hint
+              data-ai-hint={project.dataAiHint || "project preview"}
             />
         </Link>
         {project.projectUrl && (
@@ -48,7 +48,7 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) { // 
           <Link href={`/gallery?project=${project.id}`}>{project.title}</Link>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          By <Link href={`/artists/${project.creatorId}`} className="hover:underline hover:text-accent">{project.creatorName}</Link> {/* Changed artistId, artistName */}
+          By <Link href={`/artists/${project.creatorId}`} className="hover:underline hover:text-accent">{project.creatorName}</Link>
         </p>
         <p className="text-xs text-muted-foreground mt-1">Category: {project.category}</p>
         {project.techStack && project.techStack.length > 0 && (

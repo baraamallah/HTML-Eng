@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { playfairDisplay, lato } from '@/lib/fonts';
 import './globals.css';
@@ -6,8 +7,8 @@ import Footer from '@/components/layout/footer';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Artful Aging',
-  description: 'A welcoming digital space for senior artists to celebrate creativity.',
+  title: 'DevPortfolio Hub',
+  description: 'A showcase for developers and designers to share their projects and code.',
 };
 
 export default function RootLayout({

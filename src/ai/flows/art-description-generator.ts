@@ -1,60 +1,63 @@
+
 'use server';
 
 /**
- * @fileOverview AI-powered art description and tag generator for accessibility and search.
+ * @fileOverview AI-powered project description and tag generator.
  *
- * - generateArtDescription - Generates descriptions and tags for artwork.
- * - ArtDescriptionInput - Input type for the generateArtDescription function.
- * - ArtDescriptionOutput - Return type for the generateArtDescription function.
+ * - generateProjectDetails - Generates descriptions and tags for projects based on a preview image.
+ * - ProjectDetailsInput - Input type for the generateProjectDetails function.
+ * - ProjectDetailsOutput - Return type for the generateProjectDetails function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const ArtDescriptionInputSchema = z.object({
+const ProjectDetailsInputSchema = z.object({ // Renamed from ArtDescriptionInputSchema
   photoDataUri: z
     .string()
     .describe(
-      "A photo of the artwork, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "A preview image of the project (e.g., screenshot, UI mockup), as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
+  // Optional: Could add project title or category here later for more context
 });
-export type ArtDescriptionInput = z.infer<typeof ArtDescriptionInputSchema>;
+export type ProjectDetailsInput = z.infer<typeof ProjectDetailsInputSchema>; // Renamed
 
-const ArtDescriptionOutputSchema = z.object({
-  description: z.string().describe('A detailed description of the artwork.'),
-  tags: z.array(z.string()).describe('Relevant tags for the artwork.'),
+const ProjectDetailsOutputSchema = z.object({ // Renamed from ArtDescriptionOutputSchema
+  description: z.string().describe('A concise and informative description of the project, suitable for a README or summary.'),
+  tags: z.array(z.string()).describe('Relevant keywords and technology tags for the project.'),
 });
-export type ArtDescriptionOutput = z.infer<typeof ArtDescriptionOutputSchema>;
+export type ProjectDetailsOutput = z.infer<typeof ProjectDetailsOutputSchema>; // Renamed
 
-export async function generateArtDescription(
-  input: ArtDescriptionInput
-): Promise<ArtDescriptionOutput> {
-  return artDescriptionGeneratorFlow(input);
+export async function generateProjectDetails( // Renamed from generateArtDescription
+  input: ProjectDetailsInput
+): Promise<ProjectDetailsOutput> {
+  return projectDetailsGeneratorFlow(input); // Renamed
 }
 
-const artDescriptionPrompt = ai.definePrompt({
-  name: 'artDescriptionPrompt',
-  input: {schema: ArtDescriptionInputSchema},
-  output: {schema: ArtDescriptionOutputSchema},
-  prompt: `You are an AI art assistant that helps artists create detailed descriptions and relevant tags for their artwork.
+const projectDetailsPrompt = ai.definePrompt({ // Renamed from artDescriptionPrompt
+  name: 'projectDetailsPrompt',
+  input: {schema: ProjectDetailsInputSchema},
+  output: {schema: ProjectDetailsOutputSchema},
+  prompt: `You are an AI assistant helping developers and designers create compelling descriptions and relevant tags for their software projects, UI designs, or code snippets.
 
-  Analyze the provided image and generate a comprehensive description that captures the artwork's style, subject matter, colors, and overall mood.
-
-  Also, generate a list of relevant tags that will help users find the artwork through search.
+  Analyze the provided preview image. Based on the visual cues in the image, generate:
+  1. A concise and informative description of the project. Highlight potential features, purpose, or technologies implied by the image. If it looks like a UI, describe its potential functionality. If it's abstract, focus on style or potential application.
+  2. A list of relevant tags or keywords. Include technologies that might be associated with such a project, project types, and general themes.
 
   Image: {{media url=photoDataUri}}
   Description:
+  Tags:
   `,
 });
 
-const artDescriptionGeneratorFlow = ai.defineFlow(
+const projectDetailsGeneratorFlow = ai.defineFlow( // Renamed from artDescriptionGeneratorFlow
   {
-    name: 'artDescriptionGeneratorFlow',
-    inputSchema: ArtDescriptionInputSchema,
-    outputSchema: ArtDescriptionOutputSchema,
+    name: 'projectDetailsGeneratorFlow',
+    inputSchema: ProjectDetailsInputSchema,
+    outputSchema: ProjectDetailsOutputSchema,
   },
   async input => {
-    const {output} = await artDescriptionPrompt(input);
+    const {output} = await projectDetailsPrompt(input);
     return output!;
   }
 );
