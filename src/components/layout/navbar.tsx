@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Paintbrush } from 'lucide-react';
@@ -10,7 +11,7 @@ export default function Navbar() {
           <Paintbrush className="h-8 w-8 text-primary" />
           <h1 className="text-2xl font-bold text-primary">Artful Aging</h1>
         </Link>
-        <div className="space-x-2 md:space-x-4">
+        <div className="space-x-1 md:space-x-2">
           <Button variant="ghost" asChild>
             <Link href="/">Home</Link>
           </Button>
@@ -19,6 +20,9 @@ export default function Navbar() {
           </Button>
           <Button variant="ghost" asChild>
             <Link href="/artists">Artists</Link>
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/about">About</Link>
           </Button>
           <Button variant="default" asChild className="pulse-gentle">
             <Link href="/upload">Upload Art</Link>

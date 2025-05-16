@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-12">
-      <section className="text-center py-12 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg shadow-lg">
+      <section className="text-center py-12 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg shadow-lg animate-fade-in-up">
         <h1 className="text-5xl font-bold mb-4 text-primary">Welcome to Artful Aging</h1>
         <p className="text-xl text-foreground/80 mb-8 max-w-3xl mx-auto">
           Celebrate your creativity, share your work, and connect with a like-minded community. Art has no age limit.
@@ -26,7 +27,7 @@ export default function HomePage() {
       <BrushStrokeDivider className="mx-auto h-8 w-40 text-primary/50" />
 
       {featuredArtist && featuredArtwork && (
-        <section id="featured-artist">
+        <section id="featured-artist" className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><Award className="w-8 h-8 text-accent" /> Featured Artist of the Week</h2>
           <Card className="overflow-hidden shadow-xl transform hover:scale-101 transition-transform duration-300">
             <div className="md:flex">
@@ -72,7 +73,7 @@ export default function HomePage() {
       
       <BrushStrokeDivider className="mx-auto h-8 w-40 text-primary/50" />
 
-      <section id="art-challenges">
+      <section id="art-challenges" className="animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
         <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><Target className="w-8 h-8 text-accent"/> Monthly Art Challenges</h2>
         <div className="grid md:grid-cols-2 gap-6">
           {MOCK_CHALLENGES.map((challenge) => (
