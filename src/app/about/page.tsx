@@ -9,7 +9,7 @@ import { Users, Target, Palette, Sparkles } from 'lucide-react';
 export default function AboutPage() {
   return (
     <div className="space-y-12">
-      <header className="text-center">
+      <header className="text-center animate-fade-in-up">
         <h1 className="text-4xl font-bold text-primary mb-2">About Artful Aging</h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
           Discover the story and passion behind our community dedicated to senior artists.
@@ -17,7 +17,7 @@ export default function AboutPage() {
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
 
-      <Card className="shadow-lg overflow-hidden">
+      <Card className="shadow-lg overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         <div className="md:flex">
           <div className="md:w-1/2">
              <Image
@@ -47,53 +47,40 @@ export default function AboutPage() {
         </div>
       </Card>
 
-      <section className="space-y-6">
+      <section className="space-y-6 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
         <h2 className="text-3xl font-semibold text-center text-primary mb-6 flex items-center justify-center gap-2">
           <Sparkles className="w-8 h-8 text-accent" /> What We Offer
         </h2>
         <div className="grid md:grid-cols-2 gap-6">
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Palette className="text-accent"/> Showcase Your Talent</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground/80">A beautiful gallery to display your artwork and dedicated artist profiles to share your journey.</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Users className="text-accent"/> Connect & Inspire</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground/80">Join a welcoming community of fellow senior artists, share feedback, and find inspiration.</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Target className="text-accent"/> Engage & Grow</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground/80">Participate in fun art challenges, discover new techniques, and keep your creative spirit alive.</p>
-            </CardContent>
-          </Card>
-           <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Sparkles className="text-accent"/> Easy to Use</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground/80">Our platform is designed to be user-friendly and accessible for everyone.</p>
-            </CardContent>
-          </Card>
+          {[
+            { icon: Palette, title: "Showcase Your Talent", description: "A beautiful gallery to display your artwork and dedicated artist profiles to share your journey." },
+            { icon: Users, title: "Connect & Inspire", description: "Join a welcoming community of fellow senior artists, share feedback, and find inspiration." },
+            { icon: Target, title: "Engage & Grow", description: "Participate in fun art challenges, discover new techniques, and keep your creative spirit alive." },
+            { icon: Sparkles, title: "Easy to Use", description: "Our platform is designed to be user-friendly and accessible for everyone." },
+          ].map((item, index) => (
+            <Card 
+              key={item.title} 
+              className="shadow-md hover:shadow-lg transition-shadow animate-fade-in-up"
+              style={{ animationDelay: `${0.5 + index * 0.1}s` }}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><item.icon className="text-accent"/> {item.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-foreground/80">{item.description}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </section>
 
-      <Card className="text-center p-8 bg-gradient-to-br from-primary/10 to-accent/10 shadow-xl">
+      <Card className="text-center p-8 bg-gradient-to-br from-primary/10 to-accent/10 shadow-xl animate-fade-in-up" style={{ animationDelay: '0.9s' }}>
         <CardTitle className="text-3xl text-primary mb-4">Join Our Creative Family</CardTitle>
         <CardDescription className="text-lg text-foreground/80 mb-6">
           Whether you're a lifelong artist or have just discovered your passion, Artful Aging is your space to shine.
         </CardDescription>
         <div className="space-x-4">
-          <Button size="lg" asChild>
+          <Button size="lg" asChild className="pulse-gentle">
             <Link href="/gallery">Explore the Gallery</Link>
           </Button>
           <Button size="lg" variant="outline" asChild>

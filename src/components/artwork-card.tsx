@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Artwork } from '@/types';
@@ -7,11 +8,15 @@ import { Heart } from 'lucide-react';
 
 interface ArtworkCardProps {
   artwork: Artwork;
+  animationDelay?: string;
 }
 
-export function ArtworkCard({ artwork }: ArtworkCardProps) {
+export function ArtworkCard({ artwork, animationDelay }: ArtworkCardProps) {
   return (
-    <Card className="group overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out flex flex-col h-full">
+    <Card 
+      className="group overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out flex flex-col h-full animate-fade-in-up"
+      style={{ animationDelay: animationDelay || '0s' }}
+    >
       <CardHeader className="p-0 relative">
         <Link href={`/gallery?artwork=${artwork.id}`}> {/* This could link to a modal or detailed page later */}
             <Image

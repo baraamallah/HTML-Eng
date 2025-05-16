@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -17,6 +18,7 @@ import { generateArtDescriptionAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { UploadCloud, Palette, Camera, PenTool, Laptop, Blend, Loader2, Sparkles, Edit3, CheckCircle } from 'lucide-react';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
+import { cn } from '@/lib/utils'; // Import cn utility
 
 const artworkSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -133,22 +135,23 @@ export default function UploadPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
-      <header className="text-center">
+      <header className="text-center animate-fade-in-up">
         <h1 className="text-4xl font-bold text-primary mb-2">Share Your Art</h1>
         <p className="text-lg text-foreground/80">Follow the steps to upload your masterpiece.</p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
       
-      {/* Progress Bar Placeholder */}
-      <div className="w-full bg-muted rounded-full h-2.5">
-        <div className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${currentProgress}%` }}></div>
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <div className="w-full bg-muted rounded-full h-2.5">
+          <div className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${currentProgress}%` }}></div>
+        </div>
+        <p className="text-sm text-center text-muted-foreground mt-2">Step {step} of 3: {step === 1 ? "Upload Image" : step === 2 ? "Add Details" : "Confirm & Submit"}</p>
       </div>
-      <p className="text-sm text-center text-muted-foreground">Step {step} of 3: {step === 1 ? "Upload Image" : step === 2 ? "Add Details" : "Confirm & Submit"}</p>
 
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {step === 1 && (
-           <Card className="shadow-lg">
+           <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2"><UploadCloud className="text-primary w-7 h-7"/>Select Image</CardTitle>
               <CardDescription>Choose a high-quality image of your artwork. JPG, PNG, or GIF accepted.</CardDescription>
@@ -194,7 +197,7 @@ export default function UploadPage() {
         )}
 
         {(step === 2 || step === 3) && previewUrl && (
-          <Card className="shadow-lg">
+          <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
              <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2"><Edit3 className="text-primary w-7 h-7"/>Add Details</CardTitle>
               <CardDescription>Provide information about your artwork. Use the AI assistant for help!</CardDescription>
@@ -262,7 +265,7 @@ export default function UploadPage() {
         )}
         
         {step === 3 && previewUrl && (
-            <Card className="shadow-xl bg-gradient-to-br from-primary/5 to-accent/5">
+            <Card className="shadow-xl bg-gradient-to-br from-primary/5 to-accent/5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <CardHeader>
                     <CardTitle className="text-2xl flex items-center gap-2"><CheckCircle className="text-green-500 w-7 h-7"/>Confirm & Submit</CardTitle>
                     <CardDescription>Review your artwork details before finalizing the upload.</CardDescription>

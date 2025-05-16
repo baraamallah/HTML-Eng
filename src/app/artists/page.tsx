@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { MOCK_ARTISTS } from '@/lib/constants';
@@ -9,15 +10,19 @@ import { User } from 'lucide-react';
 export default function ArtistsPage() {
   return (
     <div className="space-y-8">
-      <header className="text-center">
+      <header className="text-center animate-fade-in-up">
         <h1 className="text-4xl font-bold text-primary mb-2">Meet Our Artists</h1>
         <p className="text-lg text-foreground/80">Discover the talented individuals sharing their creativity.</p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {MOCK_ARTISTS.map(artist => (
-          <Card key={artist.id} className="group overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
+        {MOCK_ARTISTS.map((artist, index) => (
+          <Card 
+            key={artist.id} 
+            className="group overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col animate-fade-in-up"
+            style={{ animationDelay: `${0.2 + index * 0.1}s` }}
+          >
             <CardHeader className="items-center text-center">
               <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-accent mb-4 group-hover:scale-105 transition-transform">
                 <Image

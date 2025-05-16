@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { getArtistById, getArtworksByArtist, MOCK_ARTISTS } from '@/lib/constants';
@@ -27,7 +28,7 @@ export default function ArtistProfilePage({ params }: ArtistProfilePageProps) {
 
   return (
     <div className="space-y-10">
-      <Card className="overflow-hidden shadow-xl">
+      <Card className="overflow-hidden shadow-xl animate-fade-in-up">
         <div className="md:flex">
           <div className="md:w-1/3 p-6 bg-accent/10 flex flex-col items-center justify-center">
             <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-primary shadow-lg mb-4">
@@ -67,12 +68,16 @@ export default function ArtistProfilePage({ params }: ArtistProfilePageProps) {
         </div>
       </Card>
 
-      <section>
+      <section className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         <h2 className="text-3xl font-semibold mb-6 text-center">Artwork Portfolio</h2>
         {artworks.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {artworks.map(artwork => (
-              <ArtworkCard key={artwork.id} artwork={artwork} />
+            {artworks.map((artwork, index) => (
+              <ArtworkCard 
+                key={artwork.id} 
+                artwork={artwork} 
+                animationDelay={`${0.3 + index * 0.1}s`} 
+              />
             ))}
           </div>
         ) : (

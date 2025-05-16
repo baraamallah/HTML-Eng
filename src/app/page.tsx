@@ -24,7 +24,7 @@ export default function HomePage() {
         </Button>
       </section>
 
-      <BrushStrokeDivider className="mx-auto h-8 w-40 text-primary/50" />
+      <BrushStrokeDivider className="mx-auto h-8 w-40 text-primary/50 animate-fade-in-up" style={{ animationDelay: '0.1s' }} />
 
       {featuredArtist && featuredArtwork && (
         <section id="featured-artist" className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -71,13 +71,17 @@ export default function HomePage() {
         </section>
       )}
       
-      <BrushStrokeDivider className="mx-auto h-8 w-40 text-primary/50" />
+      <BrushStrokeDivider className="mx-auto h-8 w-40 text-primary/50 animate-fade-in-up" style={{ animationDelay: '0.3s' }}/>
 
       <section id="art-challenges" className="animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
         <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><Target className="w-8 h-8 text-accent"/> Monthly Art Challenges</h2>
         <div className="grid md:grid-cols-2 gap-6">
-          {MOCK_CHALLENGES.map((challenge) => (
-            <Card key={challenge.id} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          {MOCK_CHALLENGES.map((challenge, index) => (
+            <Card 
+              key={challenge.id} 
+              className="shadow-lg hover:shadow-xl transition-shadow duration-300 animate-fade-in-up"
+              style={{ animationDelay: `${0.5 + index * 0.1}s` }}
+            >
               <CardHeader>
                 <CardTitle className="text-2xl text-primary">{challenge.title}</CardTitle>
               </CardHeader>
