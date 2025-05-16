@@ -7,6 +7,7 @@ import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { Users, Target, Code2, Component, Sparkles, Terminal } from 'lucide-react'; // Updated icons
 
 export default function AboutPage() {
+  const aboutImageHint = "team office";
   return (
     <div className="space-y-12">
       <header className="text-center animate-fade-in-up">
@@ -21,12 +22,12 @@ export default function AboutPage() {
         <div className="md:flex">
           <div className="md:w-1/2">
              <Image
-                src="https://placehold.co/600x400.png"
+                src={`https://source.unsplash.com/600x400/?${aboutImageHint.replace(/ /g, ',')}`}
                 alt="Diverse group of developers collaborating"
                 width={600}
                 height={400}
                 className="object-cover w-full h-full"
-                data-ai-hint="team office"
+                data-ai-hint={aboutImageHint}
               />
           </div>
           <div className="md:w-1/2 p-6 md:p-8">
