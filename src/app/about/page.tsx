@@ -22,8 +22,8 @@ export default function AboutPage() {
         <div className="md:flex">
           <div className="md:w-1/2">
              <Image
-                src="https://placehold.co/600x400.png" // Changed from Unsplash
-                alt="Placeholder image representing a collaborative team or office environment"
+                src={`https://source.unsplash.com/random/600x400/?${aboutImageHint.split(' ').join(',')}`}
+                alt="Image representing a collaborative team or office environment"
                 width={600}
                 height={400}
                 className="object-cover w-full h-full"
@@ -59,8 +59,8 @@ export default function AboutPage() {
             { icon: Terminal, title: "Engage & Grow", description: "Participate in coding challenges, discover new technologies, and keep your skills sharp." },
             { icon: Code2, title: "Developer-Friendly", description: "Our platform is designed for ease of use, allowing you to focus on what you do best: creating." },
           ].map((item, index) => (
-            <Card 
-              key={item.title} 
+            <Card
+              key={item.title}
               className="shadow-md hover:shadow-lg transition-shadow animate-fade-in-up"
               style={{ animationDelay: `${0.5 + index * 0.1}s` }}
             >
