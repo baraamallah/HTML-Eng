@@ -6,26 +6,16 @@ export const CATEGORIES: Category[] = ['Web App', 'Mobile App', 'UI/UX Design', 
 export const MOCK_CREATORS: Creator[] = [
   {
     id: 'dev1',
-    name: 'Zaid Naholi', // Updated name
-    photoUrl: '/img/creator-zaid-naholi.png', // Updated image path
-    dataAiHint: 'male developer', // Assuming Zaid is male, updating hint. Let me know if this needs to be different.
+    name: 'Zaid Naholi',
+    photoUrl: '/img/creator-zaid-naholi.png',
+    dataAiHint: 'male developer',
     location: 'Silicon Valley, CA',
     bio: 'Full-stack developer with a passion for creating intuitive web applications. Loves Next.js and serverless architectures.',
     statement: 'Code is my canvas. I strive to build software that is not only functional but also a joy to use.',
-    githubUsername: 'zaidnaholi', // Updated for consistency, can be changed if needed
-    personalWebsite: 'https://zaidnaholi.dev', // Updated for consistency
+    githubUsername: 'zaidnaholi',
+    personalWebsite: 'https://zaidnaholi.dev',
   },
-  {
-    id: 'des2',
-    name: 'Bob Byte',
-    photoUrl: '/img/creator-bob-byte.png',
-    dataAiHint: 'male designer',
-    location: 'Austin, TX',
-    bio: 'UI/UX designer focused on human-centered design. Expert in Figma and creating delightful user experiences for mobile apps.',
-    statement: 'Design is about solving problems elegantly. My goal is to make technology accessible and beautiful for everyone.',
-    githubUsername: 'bobbyte',
-    linkedInProfile: 'https://linkedin.com/in/bobbyte',
-  },
+  // Bob Byte removed
 ];
 
 export const MOCK_PROJECTS: Project[] = [
@@ -38,26 +28,13 @@ export const MOCK_PROJECTS: Project[] = [
     dataAiHint: 'app map',
     category: 'Web App',
     creatorId: 'dev1',
-    creatorName: 'Zaid Naholi', // Updated creatorName
+    creatorName: 'Zaid Naholi',
     uploadDate: new Date(2023, 8, 15).toISOString(),
     isFeatured: true,
-    projectUrl: 'https://github.com/zaidnaholi/ecoleta', // Updated project URL to reflect new username
+    projectUrl: 'https://github.com/zaidnaholi/ecoleta',
     techStack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Firebase'],
   },
-  {
-    id: 'proj102',
-    title: 'Zenith Mobile Banking UI Kit',
-    description: 'A comprehensive UI kit for a modern mobile banking application, designed in Figma. Includes 50+ screens and components.',
-    tags: ['ui kit', 'figma', 'mobile app', 'fintech', 'design system'],
-    previewImageUrl: '/img/project-zenith-banking-preview.png',
-    dataAiHint: 'mobile design',
-    category: 'UI/UX Design',
-    creatorId: 'des2',
-    creatorName: 'Bob Byte',
-    uploadDate: new Date(2023, 9, 20).toISOString(),
-    projectUrl: 'https://figma.com/community/file/12345/zenith-banking-ui-kit',
-    techStack: ['Figma', 'Material Design'],
-  },
+  // proj102 by Bob Byte removed
   {
     id: 'proj103',
     title: 'Python Web Scraper for News',
@@ -67,26 +44,12 @@ export const MOCK_PROJECTS: Project[] = [
     dataAiHint: 'code editor',
     category: 'Code Snippet',
     creatorId: 'dev1',
-    creatorName: 'Zaid Naholi', // Updated creatorName
+    creatorName: 'Zaid Naholi',
     uploadDate: new Date(2023, 10, 1).toISOString(),
-    projectUrl: 'https://gist.github.com/zaidnaholi/abc123xyz', // Updated project URL
+    projectUrl: 'https://gist.github.com/zaidnaholi/abc123xyz',
     techStack: ['Python', 'BeautifulSoup', 'Requests'],
   },
-  {
-    id: 'proj104',
-    title: 'My Awesome App',
-    description: 'An innovative mobile application for task management, built with React Native and Firebase.',
-    tags: ['mobile app', 'react native', 'firebase', 'productivity'],
-    previewImageUrl: '/img/project-awesome-app-preview.png',
-    dataAiHint: 'mobile interface',
-    category: 'Mobile App',
-    creatorId: 'des2',
-    creatorName: 'Bob Byte',
-    uploadDate: new Date(2023, 11, 10).toISOString(),
-    isFeatured: true,
-    projectUrl: 'https://github.com/bobbyte/awesome-task-app',
-    techStack: ['React Native', 'Firebase', 'Expo'],
-  },
+  // proj104 by Bob Byte removed
   {
     id: 'proj105',
     title: 'Markdown Editor Library',
@@ -96,9 +59,9 @@ export const MOCK_PROJECTS: Project[] = [
     dataAiHint: 'web interface',
     category: 'Open Source Project',
     creatorId: 'dev1',
-    creatorName: 'Zaid Naholi', // Updated creatorName
+    creatorName: 'Zaid Naholi',
     uploadDate: new Date(2024, 0, 5).toISOString(),
-    projectUrl: 'https://github.com/zaidnaholi/markdown-svelte-editor', // Updated project URL
+    projectUrl: 'https://github.com/zaidnaholi/markdown-svelte-editor',
     techStack: ['Svelte', 'JavaScript', 'CSS'],
   },
 ];
