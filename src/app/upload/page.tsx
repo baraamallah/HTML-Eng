@@ -18,20 +18,27 @@ import { useToast } from '@/hooks/use-toast';
 import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Edit3, CheckCircle, ExternalLink, LogIn, UserCheck, ImagePlus, UserCog } from 'lucide-react';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { cn } from '@/lib/utils';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage, app } from '@/lib/firebase'; // Added storage and app
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Firebase Storage imports
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
 const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().optional(),
-  tags: z.string().optional(), 
+  tags: z.string().optional(),
   category: z.enum(CATEGORIES, { required_error: 'Please select a category' }),
-  previewImageUrl: z.string().url({ message: "Please enter a valid URL for the preview image." }).min(1, "Preview Image URL is required."),
+  previewImageFile: z.instanceof(File, { message: "Please upload a preview image." })
+    .refine(file => file.size <= MAX_FILE_SIZE_BYTES, `Max file size is ${MAX_FILE_SIZE_MB}MB.`)
+    .refine(file => ACCEPTED_IMAGE_TYPES.includes(file.type), "Only .jpg, .png, .webp, .gif formats are supported."),
   projectUrl: z.string().url({ message: "Please enter a valid URL (e.g., GitHub, live demo)" }).optional().or(z.literal('')),
-  techStack: z.string().optional(), 
+  techStack: z.string().optional(),
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -53,8 +60,8 @@ export default function UploadPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const router = useRouter();
-
   const [user, loadingAuth, errorAuth] = useAuthState(auth);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -62,9 +69,9 @@ export default function UploadPage() {
       title: '',
       description: '',
       tags: '',
-      previewImageUrl: '',
       projectUrl: '',
       techStack: '',
+      previewImageFile: undefined,
     },
   });
 
@@ -79,12 +86,13 @@ export default function UploadPage() {
       router.push('/login?redirect=/upload');
     }
   }, [user, loadingAuth, router, toast]);
-  
 
   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
-        localStorage.setItem('uploadFormDraft', JSON.stringify(value));
+        // Don't save file object to localStorage
+        const { previewImageFile, ...restOfValue } = value;
+        localStorage.setItem('uploadFormDraft', JSON.stringify(restOfValue));
       } catch (error) {
         console.warn("Could not save draft to localStorage:", error);
       }
@@ -93,12 +101,11 @@ export default function UploadPage() {
   }, [form]);
 
   useEffect(() => {
-    if (user) { 
+    if (user) {
       try {
         const draft = localStorage.getItem('uploadFormDraft');
         if (draft) {
-          const parsedDraft = JSON.parse(draft) as ProjectFormData;
-          // Only reset if parsedDraft is not empty, to prevent overwriting with empty object
+          const parsedDraft = JSON.parse(draft) as Omit<ProjectFormData, 'previewImageFile'>;
           if (Object.keys(parsedDraft).length > 0) {
             form.reset(parsedDraft);
           }
@@ -108,8 +115,23 @@ export default function UploadPage() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // form.reset is stable, no need to include
-  
+  }, [user]);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      form.setValue('previewImageFile', file, { shouldValidate: true });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+      form.setValue('previewImageFile', undefined);
+    }
+  };
+
   const onSubmit = async (data: ProjectFormData) => {
     if (!user) {
       toast({ title: 'Authentication Required', description: 'Please log in to share a project.', variant: 'destructive' });
@@ -118,45 +140,59 @@ export default function UploadPage() {
     }
     setIsSubmitting(true);
 
+    let uploadedImageUrl = '';
+
+    if (data.previewImageFile) {
+      const file = data.previewImageFile;
+      const storageRef = ref(storage, `project-previews/${user.uid}/${Date.now()}_${file.name}`);
+      try {
+        const snapshot = await uploadBytes(storageRef, file);
+        uploadedImageUrl = await getDownloadURL(snapshot.ref);
+        toast({ title: "Image Uploaded", description: "Preview image saved to Firebase Storage." });
+      } catch (e: any) {
+        console.error("Error uploading image: ", e);
+        toast({ title: "Image Upload Failed", description: `Could not upload image: ${e.message}`, variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+    } else {
+      toast({ title: "Missing Image", description: "Please upload a preview image.", variant: "destructive" });
+      setIsSubmitting(false);
+      return;
+    }
+
     const generateDataAiHint = (title: string): string => {
       return title.toLowerCase().split(' ').slice(0, 2).join(' ') || 'project image';
     };
 
-    const projectDataToSave: Omit<Project, 'id'> = { 
+    const projectDataToSave: Omit<Project, 'id'> & { createdAt: any } = {
       title: data.title,
       description: data.description || '',
       tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
       category: data.category,
-      previewImageUrl: data.previewImageUrl,
+      previewImageUrl: uploadedImageUrl, // Use the URL from Firebase Storage
       projectUrl: data.projectUrl || '',
       techStack: data.techStack ? data.techStack.split(',').map(tech => tech.trim()).filter(tech => tech) : [],
       creatorId: user.uid,
       creatorName: user.displayName || user.email || 'Anonymous Creator',
-      uploadDate: new Date().toISOString(), 
+      uploadDate: new Date().toISOString(),
       isFeatured: false,
       dataAiHint: generateDataAiHint(data.title),
-      createdAt: serverTimestamp() as any, // Type assertion for serverTimestamp
+      createdAt: serverTimestamp(),
     };
-    
+
     try {
       const docRef = await addDoc(collection(db, 'projects'), projectDataToSave);
-      toast({ 
-        title: 'Project Submitted!', 
+      toast({
+        title: 'Project Submitted!',
         description: `"${data.title}" has been saved with ID: ${docRef.id}.`,
         className: "bg-green-100 border-green-400 text-green-800"
       });
-      form.reset({ // Reset to truly empty state after successful submission
-        title: '',
-        description: '',
-        tags: '',
-        previewImageUrl: '',
-        projectUrl: '',
-        techStack: '',
-        category: undefined, // Reset category if possible, or handle default in UI
-      });
+      form.reset();
+      setImagePreview(null);
       localStorage.removeItem('uploadFormDraft');
-      setStep(1); 
-      router.push('/dashboard/my-projects'); 
+      setStep(1);
+      router.push('/dashboard/my-projects');
     } catch (error: any) {
       console.error("Error saving project to Firestore: ", error);
       toast({ title: 'Submission Error', description: `Could not save project: ${error.message}`, variant: 'destructive' });
@@ -186,7 +222,7 @@ export default function UploadPage() {
           </CardHeader>
           <CardContent>
             <p className="text-lg text-muted-foreground">
-              You need to be logged in to share a project. Redirecting to login...
+              You need to be logged in to share a project.
             </p>
           </CardContent>
            <CardFooter>
@@ -208,20 +244,20 @@ export default function UploadPage() {
         <p className="text-lg text-foreground/80">Follow the steps to add your project to the showcase.</p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
-      
+
       <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <div className="w-full bg-muted rounded-full h-2.5">
           <div className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${currentProgress}%` }}></div>
         </div>
-        <p className="text-sm text-center text-muted-foreground mt-2">Step {step} of 3: {step === 1 ? "Project Info & Image URL" : step === 2 ? "Details" : "Confirm & Submit"}</p>
+        <p className="text-sm text-center text-muted-foreground mt-2">Step {step} of 3: {step === 1 ? "Project Info & Image Upload" : step === 2 ? "Details" : "Confirm & Submit"}</p>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {step === 1 && (
            <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2"><ImagePlus className="text-primary w-7 h-7"/>Project Information & Preview Image URL</CardTitle>
-              <CardDescription>Provide the main details for your project and a direct URL to its preview image. (Image must be hosted elsewhere).</CardDescription>
+              <CardTitle className="text-2xl flex items-center gap-2"><ImagePlus className="text-primary w-7 h-7"/>Project Information & Preview Image</CardTitle>
+              <CardDescription>Provide the main details for your project and upload its preview image.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                <div>
@@ -230,10 +266,29 @@ export default function UploadPage() {
                 {form.formState.errors.title && <p className="text-sm font-medium text-destructive">{form.formState.errors.title.message}</p>}
               </div>
               <div>
-                <Label htmlFor="previewImageUrl">Project Preview Image URL</Label>
-                <Input id="previewImageUrl" {...form.register('previewImageUrl')} placeholder="https://example.com/your-image.png" />
-                <p className="text-xs text-muted-foreground mt-1">Provide a direct link to an already hosted image (e.g., Imgur, Cloudinary, or your own hosting). This image will be used as the thumbnail.</p>
-                {form.formState.errors.previewImageUrl && <p className="text-sm font-medium text-destructive">{form.formState.errors.previewImageUrl.message}</p>}
+                <Label htmlFor="previewImageFile">Project Preview Image</Label>
+                 <Controller
+                    name="previewImageFile"
+                    control={form.control}
+                    render={({ field: { ref, name, onBlur } }) => ( // Exclude onChange and value from field
+                        <Input
+                            id="previewImageFile"
+                            type="file"
+                            accept="image/png, image/jpeg, image/webp, image/gif"
+                            onChange={handleFileChange} // Use custom handler
+                            ref={ref}
+                            name={name}
+                            onBlur={onBlur}
+                        />
+                    )}
+                />
+                {imagePreview && (
+                    <div className="mt-2 border p-2 rounded-md inline-block">
+                        <Image src={imagePreview} alt="Preview" width={200} height={150} className="rounded-md object-contain max-h-40" />
+                    </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">Upload an image (JPG, PNG, GIF, WEBP). Max size: {MAX_FILE_SIZE_MB}MB.</p>
+                {form.formState.errors.previewImageFile && <p className="text-sm font-medium text-destructive">{form.formState.errors.previewImageFile.message}</p>}
               </div>
                <div>
                 <Label htmlFor="category">Category</Label>
@@ -243,13 +298,13 @@ export default function UploadPage() {
                   render={({ field }) => (
                     <RadioGroup
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value} // Ensure value is passed
                       className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2"
                     >
                       {CATEGORIES.map(category => (
                         <Label
                           key={category}
-                          htmlFor={`category-${category}`} 
+                          htmlFor={`category-${category}`}
                           className={`flex items-center space-x-2 border rounded-md p-3 hover:bg-accent/20 transition-colors cursor-pointer ${field.value === category ? 'border-primary ring-2 ring-primary bg-primary/10' : 'border-border'}`}
                         >
                           <RadioGroupItem value={category} id={`category-${category}`} />
@@ -264,7 +319,7 @@ export default function UploadPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end">
-                <Button type="button" onClick={() => form.trigger(['title', 'previewImageUrl', 'category']).then(isValid => isValid && setStep(2))}>Next: Add Details</Button>
+                <Button type="button" onClick={() => form.trigger(['title', 'previewImageFile', 'category']).then(isValid => isValid && setStep(2))}>Next: Add Details</Button>
             </CardFooter>
           </Card>
         )}
@@ -288,7 +343,7 @@ export default function UploadPage() {
 
               <div>
                 <Label htmlFor="description">Description / README (Optional)</Label>
-                <Textarea id="description" {...form.register('description')} rows={4} placeholder="Describe your project, its features, and purpose. Markdown is supported for READMEs." />
+                <Textarea id="description" {...form.register('description')} rows={4} placeholder="Describe your project, its features, and purpose." />
               </div>
 
               <div>
@@ -307,30 +362,28 @@ export default function UploadPage() {
              </CardFooter>
           </Card>
         )}
-        
+
         {step === 3 && (
             <Card className="shadow-xl bg-gradient-to-br from-primary/5 to-accent/5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <CardHeader>
                     <CardTitle className="text-2xl flex items-center gap-2"><CheckCircle className="text-green-500 w-7 h-7"/>Confirm & Submit Project</CardTitle>
-                    <CardDescription>Review your project details before finalizing. This will save the project to Firestore under your account.</CardDescription>
+                    <CardDescription>Review your project details before finalizing. This will upload your image and save the project to Firestore.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                     <h3 className="font-semibold text-lg">Summary:</h3>
                     <div className="p-3 border rounded-md bg-background/50 space-y-1">
                         <p><strong>Title:</strong> {form.getValues('title')}</p>
                         <p><strong>Category:</strong> {form.getValues('category')}</p>
-                        {form.getValues('previewImageUrl') && 
+                        {imagePreview &&
                             <div className='my-2'>
-                                <p><strong>Preview Image URL:</strong> <Link href={form.getValues('previewImageUrl')!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{form.getValues('previewImageUrl')}</Link></p>
-                                <Image 
-                                  src={form.getValues('previewImageUrl')!} 
-                                  alt="Project preview" 
-                                  width={200} 
-                                  height={150} 
-                                  className="rounded-md shadow-md object-contain max-h-40 mt-1" 
-                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; const nextSibling = (e.target as HTMLImageElement).nextElementSibling; if (nextSibling) nextSibling.classList.remove('hidden'); }}
+                                <p><strong>Preview Image:</strong></p>
+                                <Image
+                                  src={imagePreview}
+                                  alt="Project preview"
+                                  width={200}
+                                  height={150}
+                                  className="rounded-md shadow-md object-contain max-h-40 mt-1"
                                 />
-                                <span className="text-destructive text-xs hidden">Could not load preview image. Please check the URL.</span>
                             </div>
                         }
                         {form.getValues('projectUrl') && <p><strong>Project URL:</strong> <Link href={form.getValues('projectUrl')!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{form.getValues('projectUrl')}</Link></p>}
@@ -344,7 +397,7 @@ export default function UploadPage() {
                     <Button type="button" variant="outline" onClick={() => setStep(2)} disabled={isSubmitting}>Edit Details</Button>
                     <Button type="submit" size="lg" className="pulse-gentle" disabled={isSubmitting || !form.formState.isValid}>
                         {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" /> }
-                        {isSubmitting ? 'Submitting...' : 'Submit Project to Firestore'}
+                        {isSubmitting ? 'Submitting...' : 'Submit Project'}
                     </Button>
                 </CardFooter>
             </Card>

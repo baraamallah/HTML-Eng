@@ -17,7 +17,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // nigas.com has been removed
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com', // Added for Firebase Storage
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
