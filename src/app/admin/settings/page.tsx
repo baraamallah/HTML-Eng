@@ -79,29 +79,39 @@ export default function AdminSettingsPage() {
         setNavHomeLink('Home');
         setNavHomeHref('/');
         setAboutPageContent('Welcome to DevPortfolio Hub! Customize this text in the admin panel.');
-        toast({ title: 'Site settings not found', description: 'Initialized with defaults. Save to create them in Firestore.', variant: 'destructive' });
+        toast({ title: 'Site settings not found', description: 'Initialized with defaults. Save to create them in Firestore.', variant: 'default' });
       }
 
       // Fetch Creators
       const creatorsSnapshot = await getDocs(collection(db, 'creators'));
       const creatorsList = creatorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CreatorType));
-      setCreators(creatorsList);
+      if (creatorsList.length > 0) {
+        setCreators(creatorsList);
+      } else {
+        setCreators(MOCK_CREATORS); // Fallback to MOCK if Firestore is empty
+        toast({ title: 'No Creators in Firestore', description: 'Displaying mock creator data. Add creators to see them here.', variant: 'default' });
+      }
 
       // Fetch Projects
       const projectsSnapshot = await getDocs(collection(db, 'projects'));
       const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectType));
-      setProjects(projectsList.slice(0,10)); 
+      if (projectsList.length > 0) {
+        setProjects(projectsList.slice(0,10)); // Display a subset for brevity
+      } else {
+        setProjects(MOCK_PROJECTS.slice(0,3)); // Fallback to MOCK if Firestore is empty
+        toast({ title: 'No Projects in Firestore', description: 'Displaying mock project data. Projects added via "Share Project" page will appear here once saved to Firestore.', variant: 'default' });
+      }
 
-      toast({ title: 'Admin Data Loaded', description: 'Content fetched from Firestore.' });
-    } catch (error) {
+      toast({ title: 'Admin Data Loaded', description: 'Content status reflected from Firestore or defaults.', variant: 'default' });
+    } catch (error: any) {
       console.error("Error fetching admin data: ", error);
-      toast({ title: 'Error Fetching Data', description: 'Could not load data from Firestore. Using local defaults.', variant: 'destructive' });
+      toast({ title: 'Error Fetching Data', description: `Could not load data from Firestore: ${error.message}. Displaying local mock data.`, variant: 'destructive' });
       // Fallback to ensure UI is somewhat populated
       setSiteTitle(siteTitle || 'DevPortfolio Hub (Fallback)');
       setNavHomeLink(navHomeLink || 'Home (Fallback)');
       setAboutPageContent(aboutPageContent || 'Fallback about content.');
-      if (creators.length === 0) setCreators(MOCK_CREATORS); 
-      if (projects.length === 0) setProjects(MOCK_PROJECTS.slice(0,3));
+      setCreators(MOCK_CREATORS); 
+      setProjects(MOCK_PROJECTS.slice(0,3));
     }
   };
   
@@ -123,7 +133,8 @@ export default function AdminSettingsPage() {
     try {
       await signOut(auth);
       toast({ title: 'Logged Out', description: 'You have been logged out.' });
-    } catch (error: any) {      toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
+    } catch (error: any) {      
+      toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -418,7 +429,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                   ) : (
-                    <p className="text-muted-foreground">No creators found in Firestore. Add one above!</p>
+                    <p className="text-muted-foreground">No creators found in Firestore or mock data. Add one above to see it listed here.</p>
                   )}
                 </div>
               </div>
@@ -437,7 +448,7 @@ export default function AdminSettingsPage() {
             <AccordionContent className="p-6 pt-0">
                 <div className="flex items-center gap-2 p-3 mb-4 bg-blue-50 border border-blue-300 rounded-md text-sm text-blue-700">
                   <Info className="h-5 w-5 text-blue-500" />
-                  <p>Edit existing project details. Adding new projects is done via the main "Share Project" page, which would ideally also save to Firestore (requires further implementation).</p>
+                  <p>Projects are added via the main "Share Project" page (once Firestore integration is complete there). Below you can manage existing projects.</p>
                 </div>
                 {projects.length > 0 ? (
                     <ul className="space-y-3">
@@ -463,8 +474,8 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-muted-foreground">No projects found in Firestore. Projects are typically added via the "Share Project" page (which needs Firestore integration).</p>
-                )}
+                    <p className="text-muted-foreground">No projects found in Firestore or mock data. Projects added via the "Share Project" page will appear here after being saved to Firestore.</p>
+                  )}
             </AccordionContent>
           </Card>
         </AccordionItem>
@@ -486,3 +497,4 @@ export default function AdminSettingsPage() {
   );
 }
 
+    
