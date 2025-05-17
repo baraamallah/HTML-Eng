@@ -30,6 +30,9 @@ const CategoryIcon = ({ category }: { category: Category }) => {
   }
 };
 
+const FALLBACK_MODAL_IMAGE_URL = 'https://placehold.co/800x450.png?text=Preview+Error';
+const ALLOWED_MODAL_HOSTNAMES = ['placehold.co']; // Only allow placehold.co for direct processing in modal
+
 export default function GalleryPage() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -42,6 +45,7 @@ export default function GalleryPage() {
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState(FALLBACK_MODAL_IMAGE_URL);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -72,6 +76,21 @@ export default function GalleryPage() {
 
   const handleViewProjectDetails = (project: Project) => {
     setSelectedProject(project);
+    // Determine image URL for modal
+    let imageUrlToUseInModal = FALLBACK_MODAL_IMAGE_URL;
+    if (project.previewImageUrl) {
+      try {
+        const url = new URL(project.previewImageUrl);
+        if (ALLOWED_MODAL_HOSTNAMES.includes(url.hostname)) {
+          imageUrlToUseInModal = project.previewImageUrl;
+        } else {
+          console.warn(`Modal: Hostname ${url.hostname} not in allowed list for ${project.title}. Using fallback.`);
+        }
+      } catch (e) {
+        console.warn(`Modal: Invalid project.previewImageUrl: ${project.previewImageUrl} for ${project.title}. Using fallback.`);
+      }
+    }
+    setModalImageUrl(imageUrlToUseInModal);
     setIsDetailModalOpen(true);
   };
 
@@ -204,12 +223,13 @@ export default function GalleryPage() {
             <div className="space-y-4 py-4">
               <div className="relative w-full aspect-video rounded-md overflow-hidden shadow-lg">
                 <Image
-                  src={selectedProject.previewImageUrl || 'https://placehold.co/800x450.png'}
+                  src={modalImageUrl}
                   alt={selectedProject.title}
                   layout="fill"
                   objectFit="contain"
                   data-ai-hint={selectedProject.dataAiHint || "project details"}
-                  onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/800x450.png?text=Preview+Error'; }}
+                  onError={() => { setModalImageUrl(FALLBACK_MODAL_IMAGE_URL); }}
+                  unoptimized={!ALLOWED_MODAL_HOSTNAMES.some(host => modalImageUrl.startsWith(`https://${host}`))}
                 />
               </div>
               
