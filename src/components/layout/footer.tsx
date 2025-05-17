@@ -1,5 +1,5 @@
 
-import { BrushStrokeDivider } from "@/components/icons/brush-stroke-divider"; // Keep for thematic flair or replace later
+import { BrushStrokeDivider } from "@/components/icons/brush-stroke-divider";
 
 export default function Footer() {
   return (
@@ -11,6 +11,9 @@ export default function Footer() {
         </p>
         <p className="text-xs mt-2 text-muted-foreground">
           Built for the creative tech community.
+        </p>
+        <p className="text-xs mt-2 text-muted-foreground">
+          For support or issues, contact: <a href="mailto:baraa.elmalah@gmail.com" className="hover:underline text-primary">baraa.elmalah@gmail.com</a>
         </p>
       </div>
     </footer>

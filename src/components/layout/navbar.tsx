@@ -39,9 +39,7 @@ export default function Navbar() {
           <Button variant="ghost" asChild>
             <Link href="/gallery">Showcase</Link>
           </Button>
-          <Button variant="ghost" asChild>
-            <Link href="/artists">Creators</Link>
-          </Button>
+          {/* Removed Creators link */}
           <Button variant="ghost" asChild>
             <Link href="/about">About</Link>
           </Button>
