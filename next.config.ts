@@ -17,7 +17,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // source.unsplash.com removed as images are now local
+      {
+        protocol: 'https', // Or 'http' if that's what nigas.com uses
+        hostname: 'nigas.com',
+        port: '',
+        pathname: '/**', // You can make this more specific if needed
+      },
     ],
   },
 };

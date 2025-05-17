@@ -24,21 +24,25 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
   const isObservedVisible = !!entry?.isIntersecting;
 
   const [isMounted, setIsMounted] = useState(false);
-  const [currentImageUrl, setCurrentImageUrl] = useState(project.previewImageUrl);
+  // Initialize with project's URL or fallback if it's falsy
+  const [currentImageUrl, setCurrentImageUrl] = useState(project.previewImageUrl || FALLBACK_IMAGE_URL);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
   
   useEffect(() => {
-    // Reset image URL if project prop changes
-    setCurrentImageUrl(project.previewImageUrl);
+    // Reset image URL if project prop changes, or use fallback if new URL is falsy
+    setCurrentImageUrl(project.previewImageUrl || FALLBACK_IMAGE_URL);
   }, [project.previewImageUrl]);
 
   const showAnimation = isMounted && isObservedVisible;
 
   const handleImageError = () => {
-    setCurrentImageUrl(FALLBACK_IMAGE_URL);
+    // Prevent infinite loop if fallback itself fails, though unlikely for placehold.co
+    if (currentImageUrl !== FALLBACK_IMAGE_URL) {
+        setCurrentImageUrl(FALLBACK_IMAGE_URL);
+    }
   };
 
   return (
