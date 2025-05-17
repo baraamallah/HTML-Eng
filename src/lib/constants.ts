@@ -6,19 +6,19 @@ export const CATEGORIES: Category[] = ['Web App', 'Mobile App', 'UI/UX Design', 
 export const MOCK_CREATORS: Creator[] = [
   {
     id: 'dev1',
-    name: 'Alice Wonderland',
-    photoUrl: '/img/creator-alice-wonderland.png', // Updated path
-    dataAiHint: 'female developer',
+    name: 'Zaid Naholi', // Updated name
+    photoUrl: '/img/creator-zaid-naholi.png', // Updated image path
+    dataAiHint: 'male developer', // Assuming Zaid is male, updating hint. Let me know if this needs to be different.
     location: 'Silicon Valley, CA',
     bio: 'Full-stack developer with a passion for creating intuitive web applications. Loves Next.js and serverless architectures.',
     statement: 'Code is my canvas. I strive to build software that is not only functional but also a joy to use.',
-    githubUsername: 'alicew',
-    personalWebsite: 'https://alicew.dev',
+    githubUsername: 'zaidnaholi', // Updated for consistency, can be changed if needed
+    personalWebsite: 'https://zaidnaholi.dev', // Updated for consistency
   },
   {
     id: 'des2',
     name: 'Bob Byte',
-    photoUrl: '/img/creator-bob-byte.png', // Updated path
+    photoUrl: '/img/creator-bob-byte.png',
     dataAiHint: 'male designer',
     location: 'Austin, TX',
     bio: 'UI/UX designer focused on human-centered design. Expert in Figma and creating delightful user experiences for mobile apps.',
@@ -34,14 +34,14 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Ecoleta - Recycling Finder',
     description: 'A web application helping users find nearby recycling points for various materials. Built with Next.js, TypeScript, and Mapbox.',
     tags: ['web app', 'nextjs', 'typescript', 'sustainability', 'maps'],
-    previewImageUrl: '/img/project-ecoleta-preview.png', // Updated path
+    previewImageUrl: '/img/project-ecoleta-preview.png',
     dataAiHint: 'app map',
     category: 'Web App',
     creatorId: 'dev1',
-    creatorName: 'Alice Wonderland',
+    creatorName: 'Zaid Naholi', // Updated creatorName
     uploadDate: new Date(2023, 8, 15).toISOString(),
     isFeatured: true,
-    projectUrl: 'https://github.com/alicew/ecoleta',
+    projectUrl: 'https://github.com/zaidnaholi/ecoleta', // Updated project URL to reflect new username
     techStack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Firebase'],
   },
   {
@@ -49,7 +49,7 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Zenith Mobile Banking UI Kit',
     description: 'A comprehensive UI kit for a modern mobile banking application, designed in Figma. Includes 50+ screens and components.',
     tags: ['ui kit', 'figma', 'mobile app', 'fintech', 'design system'],
-    previewImageUrl: '/img/project-zenith-banking-preview.png', // Updated path
+    previewImageUrl: '/img/project-zenith-banking-preview.png',
     dataAiHint: 'mobile design',
     category: 'UI/UX Design',
     creatorId: 'des2',
@@ -63,13 +63,13 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Python Web Scraper for News',
     description: 'A Python script that scrapes headlines from various news websites using BeautifulSoup and Requests.',
     tags: ['python', 'web scraping', 'automation', 'script', 'data'],
-    previewImageUrl: '/img/project-python-scraper-preview.png', // Updated path
+    previewImageUrl: '/img/project-python-scraper-preview.png',
     dataAiHint: 'code editor',
     category: 'Code Snippet',
     creatorId: 'dev1',
-    creatorName: 'Alice Wonderland',
+    creatorName: 'Zaid Naholi', // Updated creatorName
     uploadDate: new Date(2023, 10, 1).toISOString(),
-    projectUrl: 'https://gist.github.com/alicew/abc123xyz',
+    projectUrl: 'https://gist.github.com/zaidnaholi/abc123xyz', // Updated project URL
     techStack: ['Python', 'BeautifulSoup', 'Requests'],
   },
   {
@@ -77,7 +77,7 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'My Awesome App',
     description: 'An innovative mobile application for task management, built with React Native and Firebase.',
     tags: ['mobile app', 'react native', 'firebase', 'productivity'],
-    previewImageUrl: '/img/project-awesome-app-preview.png', // Updated path
+    previewImageUrl: '/img/project-awesome-app-preview.png',
     dataAiHint: 'mobile interface',
     category: 'Mobile App',
     creatorId: 'des2',
@@ -92,13 +92,13 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Markdown Editor Library',
     description: 'A lightweight, embeddable Markdown editor component built with Svelte. Open source and community-driven.',
     tags: ['open source', 'javascript', 'markdown', 'library', 'svelte'],
-    previewImageUrl: '/img/project-markdown-editor-preview.png', // Updated path
+    previewImageUrl: '/img/project-markdown-editor-preview.png',
     dataAiHint: 'web interface',
     category: 'Open Source Project',
     creatorId: 'dev1',
-    creatorName: 'Alice Wonderland',
+    creatorName: 'Zaid Naholi', // Updated creatorName
     uploadDate: new Date(2024, 0, 5).toISOString(),
-    projectUrl: 'https://github.com/alicew/markdown-svelte-editor',
+    projectUrl: 'https://github.com/zaidnaholi/markdown-svelte-editor', // Updated project URL
     techStack: ['Svelte', 'JavaScript', 'CSS'],
   },
 ];
