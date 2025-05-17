@@ -17,12 +17,7 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
-        protocol: 'https', // Or 'http' if that's what nigas.com uses
-        hostname: 'nigas.com',
-        port: '',
-        pathname: '/**', // You can make this more specific if needed
-      },
+      // nigas.com has been removed
     ],
   },
 };

@@ -2,7 +2,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link'; // Ensured import
+import Link from 'next/link';
 import type { Project } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,8 @@ interface ProjectCardProps {
   animationDelay?: string;
 }
 
-const FALLBACK_IMAGE_URL = 'https://placehold.co/300x200.png?text=Preview+Error';
+const FALLBACK_IMAGE_URL = 'https://placehold.co/300x200.png?text=Image+Error';
+const ALLOWED_IMAGE_HOST = 'placehold.co';
 
 export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -24,22 +25,31 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
   const isObservedVisible = !!entry?.isIntersecting;
 
   const [isMounted, setIsMounted] = useState(false);
-  // Initialize with project's URL or fallback if it's falsy
-  const [currentImageUrl, setCurrentImageUrl] = useState(project.previewImageUrl || FALLBACK_IMAGE_URL);
+  const [currentImageUrl, setCurrentImageUrl] = useState(FALLBACK_IMAGE_URL);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
   
   useEffect(() => {
-    // Reset image URL if project prop changes, or use fallback if new URL is falsy
-    setCurrentImageUrl(project.previewImageUrl || FALLBACK_IMAGE_URL);
+    let imageUrlToUse = FALLBACK_IMAGE_URL;
+    if (project.previewImageUrl) {
+      try {
+        const url = new URL(project.previewImageUrl);
+        if (url.hostname === ALLOWED_IMAGE_HOST) {
+          imageUrlToUse = project.previewImageUrl;
+        }
+      } catch (e) {
+        // Invalid URL, stick to fallback
+        console.warn(`Invalid project.previewImageUrl: ${project.previewImageUrl}`);
+      }
+    }
+    setCurrentImageUrl(imageUrlToUse);
   }, [project.previewImageUrl]);
 
   const showAnimation = isMounted && isObservedVisible;
 
   const handleImageError = () => {
-    // Prevent infinite loop if fallback itself fails, though unlikely for placehold.co
     if (currentImageUrl !== FALLBACK_IMAGE_URL) {
         setCurrentImageUrl(FALLBACK_IMAGE_URL);
     }
@@ -62,9 +72,10 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
               width={300}
               height={200}
               className="w-full object-cover transition-transform duration-300 group-hover:scale-110"
-              style={{ minWidth: '300px' }} // Ensure consistent image sizing before load
+              style={{ minWidth: '300px' }}
               data-ai-hint={project.dataAiHint || "project preview"}
               onError={handleImageError}
+              unoptimized={currentImageUrl !== project.previewImageUrl && currentImageUrl === FALLBACK_IMAGE_URL} // Avoid optimizing the fallback if it's already a placeholder
             />
         </Link>
         {project.projectUrl && (
