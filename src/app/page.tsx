@@ -2,13 +2,13 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from 'next/link'; // Ensured import
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_CHALLENGES } from '@/lib/constants';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { Award, BrainCircuit } from 'lucide-react';
-import { useRef, useState, useEffect } from 'react'; // Added useState, useEffect
+import { useRef, useState, useEffect } from 'react';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { cn } from '@/lib/utils';
 import { ClientDateDisplay } from '@/components/client-date-display';
@@ -36,6 +36,15 @@ export default function HomePage() {
   const challengesEntry = useIntersectionObserver(challengesRef, { threshold: 0.1, freezeOnceVisible: false });
   const isChallengesObservedVisible = !!challengesEntry?.isIntersecting;
   const showChallengesAnimation = isMounted && isChallengesObservedVisible;
+
+  if (!featuredCreator || !featuredProject) {
+    // Fallback if mock data is somehow empty, to prevent errors
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Loading content or content not available...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-12">
@@ -69,7 +78,7 @@ export default function HomePage() {
           ref={featuredCreatorRef}
           id="featured-creator"
           className={cn(
-            "transition-opacity duration-700 ease-out", // Keep existing transition for smoothness
+            "transition-opacity duration-700 ease-out",
             showFeaturedCreatorAnimation ? 'animate-fade-in-up opacity-100' : 'opacity-0'
           )}
           style={showFeaturedCreatorAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
@@ -137,7 +146,7 @@ export default function HomePage() {
         <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><BrainCircuit className="w-8 h-8 text-accent"/> Coding & Design Challenges</h2>
         <div className="grid md:grid-cols-2 gap-6">
           {MOCK_CHALLENGES.map((challenge, index) => {
-            const showChallengeCardAnimation = isMounted && showChallengesAnimation; // Card animates if section is visible & mounted
+            const showChallengeCardAnimation = isMounted && showChallengesAnimation;
             return (
             <Card
               key={challenge.id}

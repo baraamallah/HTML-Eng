@@ -1,5 +1,5 @@
 
-import Link from 'next/link';
+import Link from 'next/link'; // Ensured import
 import Image from 'next/image';
 import { MOCK_CREATORS } from '@/lib/constants';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,11 +17,11 @@ export default function CreatorsPage() {
       </header>
 
       {MOCK_CREATORS.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-8"> {/* Updated classes for centering */}
+        <div className="flex flex-wrap justify-center gap-8">
           {MOCK_CREATORS.map((creator, index) => (
             <Card 
               key={creator.id} 
-              className="group w-full max-w-sm overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col animate-fade-in-up" // Added w-full max-w-sm
+              className="group w-full max-w-sm overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col animate-fade-in-up"
               style={{ animationDelay: `${0.2 + index * 0.1}s` }}
             >
               <CardHeader className="items-center text-center">

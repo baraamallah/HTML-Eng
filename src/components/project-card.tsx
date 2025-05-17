@@ -2,12 +2,12 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from 'next/link'; // Ensured import
 import type { Project } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Eye, Github, ExternalLink } from 'lucide-react';
-import { useRef, useState, useEffect } from 'react'; // Added useState, useEffect
+import { useRef, useState, useEffect } from 'react';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { cn } from '@/lib/utils';
 

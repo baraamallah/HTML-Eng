@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link'; // Ensured import
 import { ProjectCard } from '@/components/project-card';
 import { MOCK_PROJECTS, CATEGORIES } from '@/lib/constants';
 import type { Project, Category } from '@/types';
@@ -9,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid } from 'lucide-react'; // Added LayoutGrid
+import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid } from 'lucide-react';
 
 const CategoryIcon = ({ category }: { category: Category }) => {
   switch (category) {
@@ -18,14 +19,14 @@ const CategoryIcon = ({ category }: { category: Category }) => {
     case 'UI/UX Design': return <DraftingCompass className="w-4 h-4 mr-2 text-primary/80" />;
     case 'Code Snippet': return <FileJson className="w-4 h-4 mr-2 text-primary/80" />;
     case 'Open Source Project': return <GitFork className="w-4 h-4 mr-2 text-primary/80" />;
-    default: return <LayoutGrid className="w-4 h-4 mr-2 text-primary/80" />; // Default icon
+    default: return <LayoutGrid className="w-4 h-4 mr-2 text-primary/80" />;
   }
 };
 
 export default function GalleryPage() {
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date'>('date'); // Removed 'popularity'
+  const [sortBy, setSortBy] = useState<'date'>('date');
 
   const filteredProjects = MOCK_PROJECTS.filter(project => {
     const categoryMatch = activeCategory === 'All' || project.category === activeCategory;
@@ -79,7 +80,6 @@ export default function GalleryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="date" className="flex items-center"><CalendarDays className="w-4 h-4 mr-2" />Date Added</SelectItem>
-            {/* Popularity option removed for now */}
           </SelectContent>
         </Select>
       </div>
@@ -100,4 +100,3 @@ export default function GalleryPage() {
     </div>
   );
 }
-

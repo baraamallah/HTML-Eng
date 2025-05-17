@@ -1,6 +1,6 @@
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from 'next/link'; // Ensured import
 import { getCreatorById, getProjectsByCreator, MOCK_CREATORS } from '@/lib/constants';
 import { ProjectCard } from '@/components/project-card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Mail, MapPin, Info, CodeXml, MessageSquareQuote, Github, Linkedin, Glob
 import { notFound } from 'next/navigation';
 
 interface CreatorProfilePageProps {
-  params: { artistId: string }; // artistId used for route, maps to creatorId
+  params: { artistId: string };
 }
 
 export function generateStaticParams() {
@@ -112,4 +112,3 @@ export default function CreatorProfilePage({ params }: CreatorProfilePageProps) 
     </div>
   );
 }
-
