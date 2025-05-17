@@ -7,15 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_CHALLENGES } from '@/lib/constants';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import { Award, BrainCircuit } from 'lucide-react';
+import { Award, BrainCircuit, StarOff } from 'lucide-react'; // Added StarOff
 import { useRef, useState, useEffect } from 'react';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { cn } from '@/lib/utils';
 import { ClientDateDisplay } from '@/components/client-date-display';
 
 export default function HomePage() {
-  const featuredCreator = MOCK_CREATORS.find(creator => creator.id === MOCK_PROJECTS.find(proj => proj.isFeatured)?.creatorId) || MOCK_CREATORS[0];
-  const featuredProject = MOCK_PROJECTS.find(proj => proj.isFeatured) || MOCK_PROJECTS[0];
+  const featuredProject = MOCK_PROJECTS.find(proj => proj.isFeatured) || (MOCK_PROJECTS.length > 0 ? MOCK_PROJECTS[0] : null);
+  const featuredCreator = featuredProject ? (MOCK_CREATORS.find(creator => creator.id === featuredProject.creatorId) || (MOCK_CREATORS.length > 0 ? MOCK_CREATORS[0] : null)) : (MOCK_CREATORS.length > 0 ? MOCK_CREATORS[0] : null);
+
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -37,14 +38,6 @@ export default function HomePage() {
   const isChallengesObservedVisible = !!challengesEntry?.isIntersecting;
   const showChallengesAnimation = isMounted && isChallengesObservedVisible;
 
-  if (!featuredCreator || !featuredProject) {
-    // Fallback if mock data is somehow empty, to prevent errors
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Loading content or content not available...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-12">
@@ -73,7 +66,7 @@ export default function HomePage() {
         style={showHeroAnimation ? { animationDelay: '0.1s' } : { opacity: 0 }}
       />
 
-      {featuredCreator && featuredProject && (
+      {featuredCreator && featuredProject ? (
         <section
           ref={featuredCreatorRef}
           id="featured-creator"
@@ -83,12 +76,12 @@ export default function HomePage() {
           )}
           style={showFeaturedCreatorAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
         >
-          <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><Award className="w-8 h-8 text-accent" /> Featured Creator of the Week</h2>
+          <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><Award className="w-8 h-8 text-accent" /> Featured Creator & Project</h2>
           <Card className="overflow-hidden shadow-xl transform hover:scale-101 transition-transform duration-300">
             <div className="md:flex">
               <div className="md:w-1/3 relative">
                 <Image
-                  src={featuredCreator.photoUrl}
+                  src={featuredCreator.photoUrl || `https://placehold.co/300x300.png?text=${encodeURIComponent(featuredCreator.name.split(' ')[0])}`}
                   alt={featuredCreator.name}
                   width={300}
                   height={300}
@@ -106,7 +99,7 @@ export default function HomePage() {
                   <h4 className="font-semibold text-accent mb-2">Featured Project: "{featuredProject.title}"</h4>
                   <Link href={`/gallery?project=${featuredProject.id}`}>
                     <Image
-                      src={featuredProject.previewImageUrl}
+                      src={featuredProject.previewImageUrl || `https://placehold.co/200x150.png?text=${encodeURIComponent(featuredProject.title)}`}
                       alt={featuredProject.title}
                       width={200}
                       height={150}
@@ -122,6 +115,24 @@ export default function HomePage() {
                 </CardFooter>
               </div>
             </div>
+          </Card>
+        </section>
+      ) : (
+         <section
+          ref={featuredCreatorRef}
+          id="featured-creator-empty"
+          className={cn(
+            "text-center py-8 transition-opacity duration-700 ease-out",
+            showFeaturedCreatorAnimation ? 'animate-fade-in-up opacity-100' : 'opacity-0'
+          )}
+          style={showFeaturedCreatorAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
+        >
+          <Card className="p-6 shadow-lg bg-muted/50">
+            <StarOff className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold text-primary mb-2">No Featured Content Yet</h2>
+            <p className="text-foreground/80">
+              Check back soon for featured creators and projects, or explore the showcase!
+            </p>
           </Card>
         </section>
       )}
@@ -144,33 +155,37 @@ export default function HomePage() {
         style={showChallengesAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
       >
         <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><BrainCircuit className="w-8 h-8 text-accent"/> Coding & Design Challenges</h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          {MOCK_CHALLENGES.map((challenge, index) => {
-            const showChallengeCardAnimation = isMounted && showChallengesAnimation;
-            return (
-            <Card
-              key={challenge.id}
-              className={cn(
-                "shadow-lg hover:shadow-xl transition-shadow duration-300",
-                showChallengeCardAnimation ? 'animate-fade-in-up' : 'opacity-0'
-              )}
-              style={showChallengeCardAnimation ? { animationDelay: `${0.1 + index * 0.15}s` } : { opacity: 0 }}
-            >
-              <CardHeader>
-                <CardTitle className="text-2xl text-primary">{challenge.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-foreground/90 line-clamp-3">{challenge.description}</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Ends: <ClientDateDisplay dateString={challenge.endDate} />
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Button>View Challenge</Button>
-              </CardFooter>
-            </Card>
-          )})}
-        </div>
+        {MOCK_CHALLENGES.length > 0 ? (
+          <div className="grid md:grid-cols-2 gap-6">
+            {MOCK_CHALLENGES.map((challenge, index) => {
+              const showChallengeCardAnimation = isMounted && showChallengesAnimation;
+              return (
+              <Card
+                key={challenge.id}
+                className={cn(
+                  "shadow-lg hover:shadow-xl transition-shadow duration-300",
+                  showChallengeCardAnimation ? 'animate-fade-in-up' : 'opacity-0'
+                )}
+                style={showChallengeCardAnimation ? { animationDelay: `${0.1 + index * 0.15}s` } : { opacity: 0 }}
+              >
+                <CardHeader>
+                  <CardTitle className="text-2xl text-primary">{challenge.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-foreground/90 line-clamp-3">{challenge.description}</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Ends: <ClientDateDisplay dateString={challenge.endDate} />
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button>View Challenge</Button>
+                </CardFooter>
+              </Card>
+            )})}
+          </div>
+        ) : (
+          <p className="text-center text-muted-foreground py-8">No active challenges at the moment. Stay tuned!</p>
+        )}
       </section>
     </div>
   );

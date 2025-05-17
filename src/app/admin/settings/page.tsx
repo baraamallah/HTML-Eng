@@ -41,7 +41,7 @@ export default function AdminSettingsPage() {
   const [newCreatorGithub, setNewCreatorGithub] = useState('');
   const [newCreatorLinkedIn, setNewCreatorLinkedIn] = useState('');
   const [newCreatorWebsite, setNewCreatorWebsite] = useState('');
-  const [newCreatorLocation, setNewCreatorLocation] = useState(''); // Added for editing
+  const [newCreatorLocation, setNewCreatorLocation] = useState('');
 
   const [isEditingCreator, setIsEditingCreator] = useState(false);
   const [editingCreatorId, setEditingCreatorId] = useState<string | null>(null);
@@ -112,7 +112,7 @@ export default function AdminSettingsPage() {
         setCreators(creatorsList);
         creatorsLoadedFromFirestore = true;
       } else {
-         toast({ title: 'Creators Info', description: 'No creators found in Firestore. Displaying local mock creators.', variant: 'default' });
+         toast({ title: 'Creators Info', description: 'No creators found in Firestore. Displaying local mock creators (if any).', variant: 'default' });
          setCreators(MOCK_CREATORS); 
       }
 
@@ -123,18 +123,28 @@ export default function AdminSettingsPage() {
         setProjects(projectsList.slice(0,10)); 
         projectsLoadedFromFirestore = true;
       } else {
-        toast({ title: 'Projects Info', description: 'No projects found in Firestore. Displaying local mock projects.', variant: 'default' });
+        toast({ title: 'Projects Info', description: 'No projects found in Firestore. Displaying local mock projects (if any).', variant: 'default' });
         setProjects(MOCK_PROJECTS.slice(0,10)); 
       }
 
       if (siteSettingsLoaded || creatorsLoadedFromFirestore || projectsLoadedFromFirestore) {
         let loadedItems: string[] = [];
         if (siteSettingsLoaded) loadedItems.push("site settings");
-        if (creatorsLoadedFromFirestore) loadedItems.push("creators");
-        if (projectsLoadedFromFirestore) loadedItems.push("projects");
-        toast({ title: 'Admin Data Source', description: `Fetched ${loadedItems.join(', ')} from Firestore. Others are from local mocks if Firestore was empty.` });
+        if (creatorsLoadedFromFirestore && creatorsList.length > 0) loadedItems.push("creators");
+        if (projectsLoadedFromFirestore && projectsList.length > 0) loadedItems.push("projects");
+        
+        let fallbackItems: string[] = [];
+        if (!creatorsLoadedFromFirestore || creatorsList.length === 0 && MOCK_CREATORS.length > 0) fallbackItems.push("creators");
+        if (!projectsLoadedFromFirestore || projectsList.length === 0 && MOCK_PROJECTS.length > 0) fallbackItems.push("projects");
+
+        let description = `Fetched ${loadedItems.join(', ')} from Firestore.`;
+        if (fallbackItems.length > 0) {
+          description += ` Using local mocks for ${fallbackItems.join(', ')} as Firestore was empty or data unavailable.`;
+        }
+        toast({ title: 'Admin Data Source', description: description.trim() });
+
       } else {
-        toast({ title: 'Admin Data Source', description: 'Displaying all data from local mocks as Firestore is empty.', variant: 'default' });
+        toast({ title: 'Admin Data Source', description: 'Displaying all data from local mocks as Firestore is empty or data is unavailable.', variant: 'default' });
       }
 
     } catch (error: any) {
@@ -236,7 +246,7 @@ export default function AdminSettingsPage() {
       clearCreatorForm();
       setIsEditingCreator(false);
       setEditingCreatorId(null);
-      await fetchAdminData(currentUser); 
+      if (currentUser) await fetchAdminData(currentUser); 
     } catch (error) {
       console.error("Error saving creator: ", error);
       toast({ title: 'Error Saving Creator', description: 'Could not save creator to Firestore.', variant: 'destructive' });
@@ -258,7 +268,7 @@ export default function AdminSettingsPage() {
       setEditingCreatorId(creatorId);
       toast({ title: 'Editing Creator', description: `Editing ${creatorToEdit.name}. Form populated below.`});
     } else {
-      toast({ title: 'Error', description: `Creator with ID ${creatorId} not found.`, variant: 'destructive'});
+      toast({ title: 'Error', description: `Creator with ID ${creatorId} not found. List may be out of sync or creator doesn't exist.`, variant: 'destructive'});
     }
   };
   
@@ -291,7 +301,7 @@ export default function AdminSettingsPage() {
       
       await batch.commit();
       toast({ title: 'Creator Deleted', description: `${creatorName} and their projects have been removed from Firestore. Refreshing list...` });
-      await fetchAdminData(currentUser); 
+      if (currentUser) await fetchAdminData(currentUser); 
     } catch (error) {
       console.error("Error deleting creator and their projects: ", error);
       toast({ title: 'Error Deleting Creator', description: 'Could not delete creator and projects from Firestore.', variant: 'destructive' });
@@ -302,7 +312,7 @@ export default function AdminSettingsPage() {
     const projectToEdit = projects.find(p => p.id === projectId);
     toast({
       title: 'Edit Project (Prototype)',
-      description: `Editing '${projectToEdit?.title}' requires a dedicated form similar to the 'Share Project' page. This feature is a placeholder for future development. For now, manage projects via deletion or re-uploading.`,
+      description: `Editing '${projectToEdit?.title || 'project'}' requires a dedicated form similar to the 'Share Project' page. This feature is a placeholder for future development. For now, manage projects via deletion or re-uploading.`,
       duration: 7000,
       icon: <Edit3 className="h-5 w-5" />
     });
@@ -319,7 +329,7 @@ export default function AdminSettingsPage() {
     try {
       await deleteDoc(doc(db, "projects", projectId));
       toast({ title: 'Project Deleted', description: `"${projectTitle}" has been removed from Firestore. Refreshing list...` });
-      await fetchAdminData(currentUser); 
+      if (currentUser) await fetchAdminData(currentUser); 
     } catch (error) {
       console.error("Error deleting project: ", error);
       toast({ title: 'Error Deleting Project', description: 'Could not delete project from Firestore.', variant: 'destructive' });
@@ -375,6 +385,7 @@ export default function AdminSettingsPage() {
           </form>
            <p className="text-xs text-center text-muted-foreground p-4">
             This is a Firebase authenticated admin panel. Ensure you have an admin user in your Firebase project.
+            For prototype purposes, an example password might be in the code if you're testing locally without full backend auth.
           </p>
         </Card>
       </div>
@@ -510,7 +521,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                   ) : (
-                    <p className="text-muted-foreground">No creators found. Add one above or check Firestore connection.</p>
+                    <p className="text-muted-foreground">No creators found in Firestore. Add one above, or check mock data if Firestore is empty.</p>
                   )}
                 </div>
               </div>
@@ -529,7 +540,7 @@ export default function AdminSettingsPage() {
             <AccordionContent className="p-6 pt-0">
                 <div className="flex items-start gap-2 p-3 mb-4 bg-blue-50 border border-blue-300 rounded-md text-sm text-blue-700">
                   <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <p>Projects are added via the main "Share Project" page. Below you can manage existing projects. Full project editing would typically involve a dedicated form.</p>
+                  <p>Projects are added via the main "Share Project" page by logged-in users. Below you can view and delete projects. Full project editing would typically involve a dedicated form.</p>
                 </div>
                 {projects.length > 0 ? (
                     <ul className="space-y-3">
@@ -555,7 +566,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                 ) : (
-                     <p className="text-muted-foreground">No projects found. Add some via the "Share Project" page or check Firestore connection.</p>
+                     <p className="text-muted-foreground">No projects found in Firestore. Users can add projects via the "Share Project" page, or check mock data if Firestore is empty.</p>
                   )}
             </AccordionContent>
           </Card>
@@ -577,4 +588,3 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
-
