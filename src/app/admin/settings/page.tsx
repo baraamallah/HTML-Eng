@@ -11,20 +11,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import type { Creator as CreatorType, Project as ProjectType, SiteSettings } from '@/types';
-import { Settings, UserCog, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle, Info, XCircle, UserPlus, Trash2 } from 'lucide-react'; // Added UserCog, Trash2
+import { Settings, UserCog, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle, Info, XCircle, UserPlus, Trash2, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from 'firebase/auth';
+import { signOut, onAuthStateChanged, type User } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_SITE_SETTINGS } from '@/lib/constants';
+import Link from 'next/link';
 
+// !!! IMPORTANT: Replace this with YOUR actual Firebase Admin User ID !!!
+const ADMIN_UID = "YOUR_ADMIN_FIREBASE_UID_HERE"; 
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [siteTitle, setSiteTitle] = useState(MOCK_SITE_SETTINGS.siteTitle);
   const [navHomeLink, setNavHomeLink] = useState(MOCK_SITE_SETTINGS.navHomeLink);
@@ -47,15 +49,19 @@ export default function AdminSettingsPage() {
   const [isEditingCreator, setIsEditingCreator] = useState(false);
   const [editingCreatorId, setEditingCreatorId] = useState<string | null>(null);
 
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      setIsLoadingAuth(false);
       if (user) {
-        fetchAdminData(user);
+        if (user.uid === ADMIN_UID) {
+          setIsAdmin(true);
+          fetchAdminData(user);
+        } else {
+          setIsAdmin(false);
+        }
       } else {
-        // User is signed out, reset to default/mock values
+        setIsAdmin(false);
+        // Reset to default/mock values if user logs out or is not admin
         setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
         setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
         setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
@@ -66,13 +72,14 @@ export default function AdminSettingsPage() {
         setIsEditingCreator(false);
         setEditingCreatorId(null);
       }
+      setIsLoadingAuth(false);
     });
     return () => unsubscribe();
   }, []);
 
   const fetchAdminData = async (loggedInUser: User) => {
-    if (!loggedInUser) {
-      toast({ title: 'Authentication Issue', description: 'Cannot fetch data, user not logged in.', variant: 'destructive' });
+    if (!loggedInUser || loggedInUser.uid !== ADMIN_UID) {
+      toast({ title: 'Authentication Issue', description: 'Cannot fetch data, not authorized.', variant: 'destructive' });
       setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
       setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
       setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
@@ -86,9 +93,8 @@ export default function AdminSettingsPage() {
     let siteSettingsLoaded = false;
     let creatorsLoadedFromFirestore = false;
     let projectsLoadedFromFirestore = false;
-    let fetchedCreatorsList: CreatorType[] = [];
-    let fetchedProjectsList: ProjectType[] = [];
-
+    let fetchedCreatorsList: CreatorType[] = MOCK_CREATORS; // Initialize with mock as fallback
+    let fetchedProjectsList: ProjectType[] = MOCK_PROJECTS.slice(0,10); // Initialize with mock
 
     try {
       // Fetch Site Settings
@@ -111,12 +117,13 @@ export default function AdminSettingsPage() {
 
       // Fetch Creators
       const creatorsSnapshot = await getDocs(collection(db, 'creators'));
-      fetchedCreatorsList = creatorsSnapshot.docs.map(cDoc => ({ id: cDoc.id, ...cDoc.data() } as CreatorType));
-      if (fetchedCreatorsList.length > 0) {
-        setCreators(fetchedCreatorsList);
+      const firestoreCreators = creatorsSnapshot.docs.map(cDoc => ({ id: cDoc.id, ...cDoc.data() } as CreatorType));
+      if (firestoreCreators.length > 0) {
+        setCreators(firestoreCreators);
+        fetchedCreatorsList = firestoreCreators;
         creatorsLoadedFromFirestore = true;
       } else {
-         setCreators(MOCK_CREATORS); 
+         setCreators(MOCK_CREATORS); // Fallback to mock if Firestore is empty
          if (MOCK_CREATORS.length > 0) {
             toast({ title: 'Creators Info', description: 'No creators found in Firestore. Displaying local mock creators.', variant: 'default' });
          } else {
@@ -126,12 +133,13 @@ export default function AdminSettingsPage() {
 
       // Fetch Projects
       const projectsSnapshot = await getDocs(collection(db, 'projects'));
-      fetchedProjectsList = projectsSnapshot.docs.map(pDoc => ({ id: pDoc.id, ...pDoc.data() } as ProjectType));
-      if (fetchedProjectsList.length > 0) {
-        setProjects(fetchedProjectsList.slice(0,10)); 
+      const firestoreProjects = projectsSnapshot.docs.map(pDoc => ({ id: pDoc.id, ...pDoc.data() } as ProjectType));
+      if (firestoreProjects.length > 0) {
+        setProjects(firestoreProjects.slice(0,10)); 
+        fetchedProjectsList = firestoreProjects.slice(0,10);
         projectsLoadedFromFirestore = true;
       } else {
-        setProjects(MOCK_PROJECTS.slice(0,10)); 
+        setProjects(MOCK_PROJECTS.slice(0,10)); // Fallback to mock
         if (MOCK_PROJECTS.length > 0) {
           toast({ title: 'Projects Info', description: 'No projects found in Firestore. Displaying local mock projects.', variant: 'default' });
         } else {
@@ -155,7 +163,7 @@ export default function AdminSettingsPage() {
       if (fallbackItems.length > 0) {
         description += ` Using local mocks for ${fallbackItems.join(', ')}.`;
       }
-      if (loadedItems.length === 0 && fallbackItems.length === 0){
+      if (loadedItems.length === 0 && fallbackItems.length === 0 && !siteSettingsLoaded){
         description = 'Displaying default values as Firestore and local mocks are empty for some items.';
       }
        toast({ title: 'Admin Data Status', description: description.trim() });
@@ -173,32 +181,21 @@ export default function AdminSettingsPage() {
     }
   };
   
-  const handleLogin = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleLogout = async () => {
     setIsLoadingAuth(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: 'Login Successful', description: 'Welcome, Admin!' });
-      // onAuthStateChanged will handle fetching data
-    } catch (error: any) {
-      console.error("Login error: ", error);
-      toast({ title: 'Login Failed', description: error.message || 'Invalid credentials or Firebase error.', variant: 'destructive' });
-      setIsLoadingAuth(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
       await signOut(auth);
-      toast({ title: 'Logged Out', description: 'You have been logged out.' });
+      toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
+      // onAuthStateChanged will handle resetting state and isAdmin flag
     } catch (error: any) {      
       toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
+      setIsLoadingAuth(false); // Ensure loading state is reset on error
     }
   };
 
   const handleSaveChanges = async () => {
-    if (!currentUser) {
-      toast({ title: 'Not Authenticated', description: 'Please login to save changes.', variant: 'destructive' });
+    if (!currentUser || !isAdmin) {
+      toast({ title: 'Not Authenticated or Authorized', description: 'Please login as admin to save changes.', variant: 'destructive' });
       return;
     }
     const settingsPayload: SiteSettings = {
@@ -229,8 +226,8 @@ export default function AdminSettingsPage() {
   };
 
   const handleUpdateCreator = async () => {
-     if (!currentUser) {
-      toast({ title: 'Not Authenticated', description: 'Please login.', variant: 'destructive' });
+     if (!currentUser || !isAdmin) {
+      toast({ title: 'Not Authenticated or Authorized', description: 'Please login as admin.', variant: 'destructive' });
       return;
     }
     if (!isEditingCreator || !editingCreatorId) {
@@ -241,7 +238,7 @@ export default function AdminSettingsPage() {
     const creatorData = { 
       name: creatorForm.name, 
       photoUrl: creatorForm.photoUrl || `https://placehold.co/200x200.png?text=${encodeURIComponent(creatorForm.name.split(' ')[0] || 'Creator')}`, 
-      dataAiHint: 'creator photo', // Consider making this editable or auto-generating
+      dataAiHint: 'creator photo',
       bio: creatorForm.bio,
       githubUsername: creatorForm.githubUsername,
       linkedInProfile: creatorForm.linkedInProfile,
@@ -297,8 +294,8 @@ export default function AdminSettingsPage() {
   };
 
   const handleDeleteCreator = async (creatorId: string, creatorName: string) => {
-    if (!currentUser) {
-      toast({ title: 'Not Authenticated', description: 'Please login.', variant: 'destructive' });
+    if (!currentUser || !isAdmin) {
+      toast({ title: 'Not Authenticated or Authorized', description: 'Please login as admin.', variant: 'destructive' });
       return;
     }
     if (!window.confirm(`Are you sure you want to delete creator "${creatorName}" and all their projects? This cannot be undone.`)) {
@@ -336,8 +333,8 @@ export default function AdminSettingsPage() {
   };
 
    const handleDeleteProject = async (projectId: string, projectTitle: string) => {
-    if (!currentUser) {
-      toast({ title: 'Not Authenticated', description: 'Please login.', variant: 'destructive' });
+    if (!currentUser || !isAdmin) {
+      toast({ title: 'Not Authenticated or Authorized', description: 'Please login as admin.', variant: 'destructive' });
       return;
     }
     if (!window.confirm(`Are you sure you want to delete project "${projectTitle}"? This cannot be undone.`)) {
@@ -356,8 +353,8 @@ export default function AdminSettingsPage() {
   if (isLoadingAuth) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-        <Settings className="mx-auto h-12 w-12 text-primary mb-3 animate-spin" />
-        <p>Loading Authentication...</p>
+        <Loader2 className="mx-auto h-12 w-12 text-primary mb-3 animate-spin" />
+        <p>Authenticating Admin Access...</p>
       </div>
     );
   }
@@ -368,41 +365,41 @@ export default function AdminSettingsPage() {
         <Card className="w-full max-w-md shadow-2xl">
           <CardHeader className="text-center">
             <KeyRound className="mx-auto h-12 w-12 text-primary mb-3" />
-            <CardTitle className="text-2xl">Admin Access</CardTitle>
-            <CardDescription>Login to manage site settings.</CardDescription>
+            <CardTitle className="text-2xl">Admin Access Required</CardTitle>
+            <CardDescription>Please log in with an admin account to manage site settings.</CardDescription>
           </CardHeader>
-          <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="admin-email">Email</Label>
-                <Input 
-                  id="admin-email" 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="admin-password">Password</Label>
-                <Input 
-                  id="admin-password" 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter admin password"
-                  required
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full">Login</Button>
-            </CardFooter>
-          </form>
-           <p className="text-xs text-center text-muted-foreground p-4">
-            This is a Firebase authenticated admin panel. Ensure you have an admin user in your Firebase project.
-          </p>
+          <CardContent className="text-center">
+            <Button asChild>
+              <Link href="/login?redirect=/admin/settings">Go to Login</Link>
+            </Button>
+             <p className="text-xs text-muted-foreground mt-4">
+              Ensure you are logged in with the Firebase user account designated as admin (UID: {ADMIN_UID === "YOUR_ADMIN_FIREBASE_UID_HERE" ? "Please set in code" : ADMIN_UID.substring(0,10)+'...'})
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] animate-fade-in-up">
+        <Card className="w-full max-w-md shadow-2xl">
+          <CardHeader className="text-center">
+            <ShieldCheck className="mx-auto h-12 w-12 text-destructive mb-3" />
+            <CardTitle className="text-2xl">Access Denied</CardTitle>
+            <CardDescription>You do not have permission to view this page. This area is for administrators only.</CardDescription>
+          </CardHeader>
+           <CardContent className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Logged in as: {currentUser.email}. This account is not authorized for admin access.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" onClick={handleLogout} className="w-full">
+              <LogOut className="mr-2"/> Logout and Try Different Account
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     );
@@ -417,13 +414,17 @@ export default function AdminSettingsPage() {
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
           Manage your DevPortfolio Hub content. Changes are saved to Firebase.
         </p>
+        <p className="text-sm text-muted-foreground mt-1">
+            Admin: {currentUser.email} (UID: {currentUser.uid.substring(0,10)}...)
+            {ADMIN_UID === "YOUR_ADMIN_FIREBASE_UID_HERE" && <span className="text-destructive font-bold ml-2"> (Warning: Default ADMIN_UID is set in code!)</span>}
+        </p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
       
       <div className="flex items-start justify-center gap-3 p-4 mb-6 bg-yellow-100 border-2 border-yellow-400 text-yellow-700 rounded-lg shadow-md animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <AlertTriangle className="h-8 w-8 md:h-6 md:w-6 text-yellow-600 flex-shrink-0 mt-1" />
         <p className="text-sm font-medium">
-          Important: Ensure your Firestore Security Rules are properly configured for production to protect your data. Start with locked-down rules and grant specific access as needed (e.g., only your admin UID can write).
+          Important: Ensure your Firestore Security Rules are properly configured for production to protect your data. Only the admin UID ({ADMIN_UID === "YOUR_ADMIN_FIREBASE_UID_HERE" ? "Not Set!" : ADMIN_UID.substring(0,10)+'...'}) should have write access to these settings.
         </p>
       </div>
 
@@ -550,7 +551,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                   ) : (
-                    <p className="text-muted-foreground">No creators found in Firestore. Users can sign up to create their profiles, or check mock data if Firestore is empty.</p>
+                     <p className="text-muted-foreground">No creators found in Firestore. Users can sign up to create their profiles, or check mock data if Firestore is empty.</p>
                   )}
                 </div>
               </div>
@@ -617,5 +618,6 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
+    
 
     
