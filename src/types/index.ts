@@ -6,33 +6,34 @@ export interface Project {
   title: string;
   description?: string;
   tags?: string[];
-  previewImageUrl: string; // Renamed from imageUrl
-  dataAiHint?: string; // Kept for consistency, will be tech-focused
+  previewImageUrl: string;
+  dataAiHint?: string;
   category: Category;
-  creatorId: string; // Renamed from artistId
-  creatorName: string; // Renamed from artistName
+  creatorId: string;
+  creatorName: string;
   uploadDate: string; // ISO string
   isFeatured?: boolean;
-  projectUrl?: string; // New: Link to live project or repo
-  techStack?: string[]; // New: Technologies used
+  projectUrl?: string; // Link to live project, repo, or Figma file
+  techStack?: string[]; // Technologies used
 }
 
 export interface Creator {
   id: string;
   name: string;
   photoUrl: string;
-  dataAiHint?: string; // Kept for consistency
+  dataAiHint?: string;
   location?: string;
-  bio: string; // Renamed from aboutMe
-  statement?: string; // Could be developer/designer philosophy
-  githubUsername?: string; // New
-  linkedInProfile?: string; // New
-  personalWebsite?: string; // New
+  bio: string;
+  statement?: string;
+  githubUsername?: string;
+  linkedInProfile?: string; // Full URL
+  personalWebsite?: string; // Full URL
 }
 
-export interface ProjectChallenge { // Renamed from ArtChallenge
+export interface ProjectChallenge {
   id: string;
   title: string;
   description: string;
   endDate: string; // ISO string
 }
+

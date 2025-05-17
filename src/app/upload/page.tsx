@@ -14,26 +14,24 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CATEGORIES } from '@/lib/constants';
 import type { Category } from '@/types';
-import { generateProjectDetailsAction } from './actions'; // Renamed action
+import { generateProjectDetailsAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Sparkles, Edit3, CheckCircle, ExternalLink } from 'lucide-react'; // Updated icons
+import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Sparkles, Edit3, CheckCircle, ExternalLink } from 'lucide-react';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { cn } from '@/lib/utils';
 
-// Updated schema for Project
 const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().optional(),
   tags: z.string().optional(), // Comma-separated string
   category: z.enum(CATEGORIES, { required_error: 'Please select a category' }),
-  image: z.any().refine(fileList => fileList && fileList.length === 1, 'Preview image is required.'), // "Preview Image"
+  image: z.any().refine(fileList => fileList && fileList.length === 1, 'Preview image is required.'),
   projectUrl: z.string().url({ message: "Please enter a valid URL (e.g., GitHub, live demo)" }).optional().or(z.literal('')),
   techStack: z.string().optional(), // Comma-separated string for tech stack
 });
 
-type ProjectFormData = z.infer<typeof projectSchema>; // Renamed from ArtworkFormData
+type ProjectFormData = z.infer<typeof projectSchema>;
 
-// Updated CategoryIcon
 const CategoryIcon = ({ category, className }: { category: Category, className?: string }) => {
   const props = { className: cn("w-5 h-5", className) };
   switch (category) {
@@ -53,7 +51,7 @@ export default function UploadPage() {
   const [step, setStep] = useState(1); // 1: Upload Preview, 2: Details, 3: Confirm
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<ProjectFormData>({ // Renamed
+  const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
       title: '',
@@ -80,8 +78,8 @@ export default function UploadPage() {
       const draft = localStorage.getItem('uploadFormDraft');
       if (draft) {
         const parsedDraft = JSON.parse(draft);
-        const { image, ...restOfDraft } = parsedDraft;
-        form.reset(restOfDraft);
+        const { image, ...restOfDraft } = parsedDraft; // Exclude 'image' from being reset
+        form.reset(restOfDraft); 
       }
     } catch (error) {
       console.warn("Could not load draft from localStorage:", error);
@@ -92,7 +90,7 @@ export default function UploadPage() {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      form.setValue('image', event.target.files);
+      form.setValue('image', event.target.files); // Set the FileList for validation
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
@@ -109,10 +107,9 @@ export default function UploadPage() {
     }
     setIsGenerating(true);
     try {
-      // The underlying AI flow still expects an image.
       const result = await generateProjectDetailsAction(previewUrl); 
       if (result.description) form.setValue('description', result.description);
-      if (result.tags) form.setValue('tags', result.tags.join(', '));
+      if (result.tags && result.tags.length > 0) form.setValue('tags', result.tags.join(', '));
       toast({ title: 'AI Assistance', description: 'Description and tags generated!' });
     } catch (error) {
       toast({ title: 'AI Error', description: 'Could not generate details. Please try again or write your own.', variant: 'destructive' });
@@ -121,15 +118,22 @@ export default function UploadPage() {
     }
   };
   
-  const onSubmit = (data: ProjectFormData) => { // Renamed
-    console.log('Project Data:', data);
+  const onSubmit = (data: ProjectFormData) => {
+    console.log('Project Data:', data); // In a real app, this would send to a backend
+    // Simulate image "upload" for now
+    const imageData = data.image ? (data.image[0] as File).name : 'no_image_uploaded';
+    console.log('Simulated image upload:', imageData);
+    
     toast({ 
       title: 'Project Upload Successful!', 
-      description: `"${data.title}" has been added to the showcase.`,
+      description: `"${data.title}" has been submitted for review. (Prototype: Data logged to console)`,
       className: "bg-accent text-accent-foreground border-accent"
     });
     form.reset();
     setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Clear the file input
+    }
     localStorage.removeItem('uploadFormDraft');
     setStep(1);
   };
@@ -139,7 +143,7 @@ export default function UploadPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <header className="text-center animate-fade-in-up">
-        <h1 className="text-4xl font-bold text-primary mb-2">Share Your Project</h1> {/* Updated title */}
+        <h1 className="text-4xl font-bold text-primary mb-2">Share Your Project</h1>
         <p className="text-lg text-foreground/80">Follow the steps to add your project to the showcase.</p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
@@ -159,40 +163,47 @@ export default function UploadPage() {
               <CardDescription>Choose a high-quality image for your project (e.g., screenshot, logo). JPG, PNG, or GIF accepted.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div
-                className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-border rounded-md cursor-pointer hover:border-primary transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    fileInputRef.current!.files = e.dataTransfer.files;
-                    const changeEvent = new Event('change', { bubbles: true });
-                    fileInputRef.current!.dispatchEvent(changeEvent);
-                  }
-                }}
-                onDragOver={(e) => e.preventDefault()}
-              >
-                <div className="space-y-1 text-center">
-                  <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <div className="flex text-sm text-muted-foreground">
-                    <Label htmlFor="image-upload" className="relative cursor-pointer rounded-md font-medium text-primary hover:text-primary/80 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-ring">
-                      <span>Upload a file</span>
-                    </Label>
-                    <p className="pl-1">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
-                </div>
-              </div>
-              <Input
-                id="image-upload"
+              <Controller
                 name="image"
-                type="file"
-                ref={fileInputRef}
-                className="sr-only"
-                accept="image/png, image/jpeg, image/gif"
-                onChange={handleFileChange}
+                control={form.control}
+                render={({ fieldState }) => (
+                  <>
+                    <div
+                      className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-border rounded-md cursor-pointer hover:border-primary transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                          if(fileInputRef.current) fileInputRef.current.files = e.dataTransfer.files;
+                          const changeEvent = new Event('change', { bubbles: true });
+                          fileInputRef.current?.dispatchEvent(changeEvent);
+                        }
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                    >
+                      <div className="space-y-1 text-center">
+                        <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <div className="flex text-sm text-muted-foreground">
+                          <Label htmlFor="image-upload-label" className="relative cursor-pointer rounded-md font-medium text-primary hover:text-primary/80 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-ring">
+                            <span>Upload a file</span>
+                          </Label>
+                          <p className="pl-1">or drag and drop</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
+                      </div>
+                    </div>
+                    <Input
+                      id="image-upload-label" // Changed for Label association
+                      type="file"
+                      ref={fileInputRef}
+                      className="sr-only"
+                      accept="image/png, image/jpeg, image/gif"
+                      onChange={handleFileChange} // handleFileChange will call form.setValue('image', ...)
+                    />
+                    {fieldState.error && <p className="text-sm font-medium text-destructive mt-2">{fieldState.error.message as string}</p>}
+                  </>
+                )}
               />
-              {form.formState.errors.image && <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.image.message as string}</p>}
             </CardContent>
           </Card>
         )}
@@ -228,7 +239,7 @@ export default function UploadPage() {
                       {CATEGORIES.map(category => (
                         <Label
                           key={category}
-                          htmlFor={category}
+                          htmlFor={category} // Use unique id for label association
                           className={`flex items-center space-x-2 border rounded-md p-3 hover:bg-accent/20 transition-colors cursor-pointer ${field.value === category ? 'border-primary ring-2 ring-primary bg-primary/10' : 'border-border'}`}
                         >
                           <RadioGroupItem value={category} id={category} />
@@ -243,9 +254,9 @@ export default function UploadPage() {
               </div>
               
               <div>
-                <Label htmlFor="projectUrl">Project URL (Optional)</Label>
+                <Label htmlFor="projectUrl">Project URL (e.g., GitHub, Live Demo)</Label>
                 <div className="relative">
-                <Input id="projectUrl" {...form.register('projectUrl')} disabled={step === 3} placeholder="e.g., https://github.com/yourname/project or https://live-demo.com" className="pl-8" />
+                <Input id="projectUrl" {...form.register('projectUrl')} disabled={step === 3} placeholder="https://github.com/yourname/project" className="pl-8" />
                 <ExternalLink className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
                 {form.formState.errors.projectUrl && <p className="text-sm font-medium text-destructive">{form.formState.errors.projectUrl.message}</p>}
@@ -263,12 +274,12 @@ export default function UploadPage() {
               </div>
 
               <div>
-                <Label htmlFor="techStack">Tech Stack (Optional, comma-separated)</Label>
+                <Label htmlFor="techStack">Tech Stack (Comma-separated)</Label>
                 <Input id="techStack" {...form.register('techStack')} disabled={step === 3} placeholder="E.g., React, Node.js, Python, Figma" />
               </div>
 
               <div>
-                <Label htmlFor="tags">Tags (Optional, comma-separated)</Label>
+                <Label htmlFor="tags">Tags (Comma-separated)</Label>
                 <Input id="tags" {...form.register('tags')} disabled={step === 3 || isGenerating} placeholder="E.g., full-stack, ui-design, machine-learning, game-dev" />
               </div>
             </CardContent>
@@ -285,21 +296,23 @@ export default function UploadPage() {
                     <CardTitle className="text-2xl flex items-center gap-2"><CheckCircle className="text-green-500 w-7 h-7"/>Confirm & Submit Project</CardTitle>
                     <CardDescription>Review your project details before finalizing.</CardDescription>
                 </CardHeader>
-                 {/* Display a summary of the entered data for confirmation */}
                 <CardContent className="space-y-3 text-sm">
                     <h3 className="font-semibold text-lg">Summary:</h3>
-                    <div className="p-3 border rounded-md bg-background/50">
+                    <div className="p-3 border rounded-md bg-background/50 space-y-1">
                         <p><strong>Title:</strong> {form.getValues('title')}</p>
                         <p><strong>Category:</strong> {form.getValues('category')}</p>
-                        {form.getValues('projectUrl') && <p><strong>Project URL:</strong> <Link href={form.getValues('projectUrl')!} target="_blank" className="text-primary hover:underline">{form.getValues('projectUrl')}</Link></p>}
+                        {form.getValues('projectUrl') && <p><strong>Project URL:</strong> <Link href={form.getValues('projectUrl')!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{form.getValues('projectUrl')}</Link></p>}
                         {form.getValues('techStack') && <p><strong>Tech Stack:</strong> {form.getValues('techStack')}</p>}
+                        {form.getValues('tags') && <p><strong>Tags:</strong> {form.getValues('tags')}</p>}
                         {form.getValues('description') && <p className="mt-2"><strong>Description:</strong><br/><span className="text-muted-foreground line-clamp-3 whitespace-pre-line">{form.getValues('description')}</span></p>}
-                        {form.getValues('tags') && <p className="mt-1"><strong>Tags:</strong> {form.getValues('tags')}</p>}
                     </div>
+                     <p className="text-xs text-muted-foreground mt-2">
+                        Note: Image preview is shown above. This is a prototype; data will be logged to the console upon submission.
+                     </p>
                 </CardContent>
                 <CardFooter className="flex justify-between">
                     <Button type="button" variant="outline" onClick={() => setStep(2)}>Edit Details</Button>
-                    <Button type="submit" size="lg" className="pulse-gentle">Finalize Upload</Button>
+                    <Button type="submit" size="lg" className="pulse-gentle">Finalize Upload (Prototype)</Button>
                 </CardFooter>
             </Card>
         )}
@@ -307,3 +320,4 @@ export default function UploadPage() {
     </div>
   );
 }
+

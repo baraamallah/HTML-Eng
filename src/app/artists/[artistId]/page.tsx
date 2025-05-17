@@ -1,30 +1,30 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { getCreatorById, getProjectsByCreator, MOCK_CREATORS } from '@/lib/constants'; // Updated imports
-import { ProjectCard } from '@/components/project-card'; // Renamed from ArtworkCard
+import { getCreatorById, getProjectsByCreator, MOCK_CREATORS } from '@/lib/constants';
+import { ProjectCard } from '@/components/project-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import { Mail, MapPin, Info, CodeXml, MessageSquareQuote, Github, Linkedin, Globe } from 'lucide-react'; // Updated icons
+import { Mail, MapPin, Info, CodeXml, MessageSquareQuote, Github, Linkedin, Globe } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
-interface CreatorProfilePageProps { // Renamed from ArtistProfilePageProps
-  params: { artistId: string }; // Keeping artistId for route compatibility, ideally creatorId
+interface CreatorProfilePageProps {
+  params: { artistId: string }; // artistId used for route, maps to creatorId
 }
 
 export function generateStaticParams() {
-  return MOCK_CREATORS.map(creator => ({ // Changed artist to creator
+  return MOCK_CREATORS.map(creator => ({
     artistId: creator.id,
   }));
 }
 
-export default function CreatorProfilePage({ params }: CreatorProfilePageProps) { // Renamed
-  const creator = getCreatorById(params.artistId); // Changed artist to creator
+export default function CreatorProfilePage({ params }: CreatorProfilePageProps) {
+  const creator = getCreatorById(params.artistId);
   if (!creator) {
     notFound();
   }
-  const projects = getProjectsByCreator(params.artistId); // Changed artworks to projects
+  const projects = getProjectsByCreator(params.artistId);
 
   return (
     <div className="space-y-10">
@@ -37,7 +37,7 @@ export default function CreatorProfilePage({ params }: CreatorProfilePageProps) 
                 alt={creator.name}
                 layout="fill"
                 objectFit="cover"
-                data-ai-hint={creator.dataAiHint || "creator photo"} // Updated data-ai-hint
+                data-ai-hint={creator.dataAiHint || "creator photo"}
               />
             </div>
             <h1 className="text-3xl font-bold text-primary text-center">{creator.name}</h1>
@@ -49,21 +49,21 @@ export default function CreatorProfilePage({ params }: CreatorProfilePageProps) 
             <div className="mt-4 flex space-x-3">
               {creator.githubUsername && (
                 <Button variant="ghost" size="icon" asChild>
-                  <Link href={`https://github.com/${creator.githubUsername}`} target="_blank" aria-label="GitHub">
+                  <Link href={`https://github.com/${creator.githubUsername}`} target="_blank" rel="noopener noreferrer" aria-label={`${creator.name}'s GitHub Profile`}>
                     <Github className="h-5 w-5" />
                   </Link>
                 </Button>
               )}
               {creator.linkedInProfile && (
                 <Button variant="ghost" size="icon" asChild>
-                  <Link href={creator.linkedInProfile} target="_blank" aria-label="LinkedIn">
+                  <Link href={creator.linkedInProfile} target="_blank" rel="noopener noreferrer" aria-label={`${creator.name}'s LinkedIn Profile`}>
                     <Linkedin className="h-5 w-5" />
                   </Link>
                 </Button>
               )}
               {creator.personalWebsite && (
                 <Button variant="ghost" size="icon" asChild>
-                  <Link href={creator.personalWebsite} target="_blank" aria-label="Personal Website">
+                  <Link href={creator.personalWebsite} target="_blank" rel="noopener noreferrer" aria-label={`${creator.name}'s Personal Website`}>
                     <Globe className="h-5 w-5" />
                   </Link>
                 </Button>
@@ -76,7 +76,7 @@ export default function CreatorProfilePage({ params }: CreatorProfilePageProps) 
           <div className="md:w-2/3 p-6 md:p-8">
             <section className="mb-6">
               <h2 className="text-2xl font-semibold mb-3 flex items-center gap-2 text-accent"><Info className="w-6 h-6" /> About Me</h2>
-              <p className="text-foreground/90 leading-relaxed whitespace-pre-line">{creator.bio}</p> {/* Changed aboutMe to bio, added whitespace-pre-line */}
+              <p className="text-foreground/90 leading-relaxed whitespace-pre-line">{creator.bio}</p>
             </section>
             {creator.statement && (
               <>
@@ -94,13 +94,13 @@ export default function CreatorProfilePage({ params }: CreatorProfilePageProps) 
       </Card>
 
       <section className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-        <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><CodeXml className="w-8 h-8 text-accent"/> Project Portfolio</h2> {/* Updated title and icon */}
-        {projects.length > 0 ? ( // Renamed artworks to projects
+        <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><CodeXml className="w-8 h-8 text-accent"/> Project Portfolio</h2>
+        {projects.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project, index) => ( // Renamed artwork to project
-              <ProjectCard // Renamed ArtworkCard to ProjectCard
+            {projects.map((project, index) => (
+              <ProjectCard
                 key={project.id} 
-                project={project} // Renamed artwork to project
+                project={project}
                 animationDelay={`${0.3 + index * 0.1}s`} 
               />
             ))}
@@ -112,3 +112,4 @@ export default function CreatorProfilePage({ params }: CreatorProfilePageProps) 
     </div>
   );
 }
+

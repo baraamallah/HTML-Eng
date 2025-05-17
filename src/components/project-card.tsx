@@ -38,7 +38,7 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
               width={300}
               height={200} 
               className="w-full object-cover transition-transform duration-300 group-hover:scale-110"
-              style={{ minWidth: '300px' }}
+              style={{ minWidth: '300px' }} // Ensure consistent image sizing before load
               data-ai-hint={project.dataAiHint || "project preview"}
             />
         </Link>
@@ -50,7 +50,7 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
             aria-label="View Project Live or Repository"
             asChild
           >
-            <Link href={project.projectUrl} target="_blank">
+            <Link href={project.projectUrl} target="_blank" rel="noopener noreferrer">
               {project.projectUrl.includes('github.com') ? <Github className="h-5 w-5" /> : <ExternalLink className="h-5 w-5" />}
             </Link>
           </Button>
@@ -65,7 +65,7 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
         </p>
         <p className="text-xs text-muted-foreground mt-1">Category: {project.category}</p>
         {project.techStack && project.techStack.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-1 truncate">
+          <p className="text-xs text-muted-foreground mt-1 truncate" title={project.techStack.join(', ')}>
             Tech: {project.techStack.join(', ')}
           </p>
         )}
@@ -78,3 +78,4 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
     </Card>
   );
 }
+
