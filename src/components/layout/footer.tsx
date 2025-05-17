@@ -1,5 +1,7 @@
 
 import { BrushStrokeDivider } from "@/components/icons/brush-stroke-divider";
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Footer() {
   return (
@@ -15,6 +17,20 @@ export default function Footer() {
         <p className="text-xs mt-2 text-muted-foreground">
           For support or issues, contact: <a href="mailto:baraa.elmalah@gmail.com" className="hover:underline text-primary">baraa.elmalah@gmail.com</a>
         </p>
+        <div className="mt-6">
+          <Link href="/" passHref aria-label="School Logo - Home">
+            <div className="inline-block cursor-pointer hover:opacity-80 transition-opacity">
+              <Image
+                src="https://placehold.co/120x50.png?text=School+Logo" // Replace with your actual logo
+                alt="School Logo"
+                width={120} 
+                height={50}
+                className="object-contain rounded"
+                data-ai-hint="school logo"
+              />
+            </div>
+          </Link>
+        </div>
       </div>
     </footer>
   );

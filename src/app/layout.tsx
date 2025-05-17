@@ -28,21 +28,7 @@ export default function RootLayout({
         <Footer />
         <Toaster />
         
-        {/* Fixed School Logo in Bottom Right Corner */}
-        <div className="fixed bottom-4 right-4 z-50">
-          <Link href="/" passHref aria-label="School Logo - Home">
-            <div className="cursor-pointer hover:opacity-80 transition-opacity">
-              <Image
-                src="https://placehold.co/120x50.png?text=School+Logo" // Replace with your actual logo
-                alt="School Logo"
-                width={120} 
-                height={50}
-                className="object-contain rounded shadow-md"
-                data-ai-hint="school logo"
-              />
-            </div>
-          </Link>
-        </div>
+        {/* Fixed School Logo in Bottom Right Corner - REMOVED */}
       </body>
     </html>
   );
