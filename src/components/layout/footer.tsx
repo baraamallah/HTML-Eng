@@ -21,7 +21,7 @@ export default function Footer() {
           <Link href="/" passHref aria-label="School Logo - Home">
             <div className="inline-block cursor-pointer hover:opacity-80 transition-opacity">
               <Image
-                src="https://placehold.co/120x50.png?text=School+Logo" // Replace with your actual logo
+                src="/img/your-school-logo.png" // Updated path
                 alt="School Logo"
                 width={120} 
                 height={50}
