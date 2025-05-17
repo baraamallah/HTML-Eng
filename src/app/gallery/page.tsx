@@ -19,19 +19,20 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
-const CategoryIcon = ({ category }: { category: Category }) => {
+const CategoryIcon = ({ category, className }: { category: Category, className?: string }) => {
+  const iconProps = { className: className || "w-5 h-5 mr-2" }; // Adjusted default icon size
   switch (category) {
-    case 'Web App': return <Code2 className="w-4 h-4 mr-2 text-primary/80" />;
-    case 'Mobile App': return <Smartphone className="w-4 h-4 mr-2 text-primary/80" />;
-    case 'UI/UX Design': return <DraftingCompass className="w-4 h-4 mr-2 text-primary/80" />;
-    case 'Code Snippet': return <FileJson className="w-4 h-4 mr-2 text-primary/80" />;
-    case 'Open Source Project': return <GitFork className="w-4 h-4 mr-2 text-primary/80" />;
-    default: return <LayoutGrid className="w-4 h-4 mr-2 text-primary/80" />;
+    case 'Web App': return <Code2 {...iconProps} />;
+    case 'Mobile App': return <Smartphone {...iconProps} />;
+    case 'UI/UX Design': return <DraftingCompass {...iconProps} />;
+    case 'Code Snippet': return <FileJson {...iconProps} />;
+    case 'Open Source Project': return <GitFork {...iconProps} />;
+    default: return <LayoutGrid {...iconProps} />;
   }
 };
 
 const FALLBACK_MODAL_IMAGE_URL = 'https://placehold.co/800x450.png?text=Preview+Error';
-const ALLOWED_MODAL_HOSTNAMES = ['placehold.co']; // Only allow placehold.co for direct processing in modal
+const ALLOWED_MODAL_HOSTNAMES = ['placehold.co'];
 
 export default function GalleryPage() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
@@ -76,7 +77,6 @@ export default function GalleryPage() {
 
   const handleViewProjectDetails = (project: Project) => {
     setSelectedProject(project);
-    // Determine image URL for modal
     let imageUrlToUseInModal = FALLBACK_MODAL_IMAGE_URL;
     if (project.previewImageUrl) {
       try {
@@ -84,10 +84,10 @@ export default function GalleryPage() {
         if (ALLOWED_MODAL_HOSTNAMES.includes(url.hostname)) {
           imageUrlToUseInModal = project.previewImageUrl;
         } else {
-          console.warn(`Modal: Hostname ${url.hostname} not in allowed list for ${project.title}. Using fallback.`);
+          console.warn(`Modal: Hostname ${url.hostname} not allowed for ${project.title}. Using fallback.`);
         }
       } catch (e) {
-        console.warn(`Modal: Invalid project.previewImageUrl: ${project.previewImageUrl} for ${project.title}. Using fallback.`);
+        console.warn(`Modal: Invalid project.previewImageUrl for ${project.title}: ${project.previewImageUrl}. Using fallback.`);
       }
     }
     setModalImageUrl(imageUrlToUseInModal);
@@ -126,11 +126,13 @@ export default function GalleryPage() {
       </header>
 
       <Tabs defaultValue="All" onValueChange={(value) => setActiveCategory(value as Category | 'All')} className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
-          <TabsTrigger value="All" className="flex items-center justify-center"><ListFilter className="w-4 h-4 mr-2 text-primary/80"/>All</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1 p-1 bg-muted rounded-lg shadow-inner">
+          <TabsTrigger value="All" className="flex items-center justify-center gap-2 py-2.5 px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/50 transition-colors duration-150 rounded-md">
+            <ListFilter className="w-5 h-5"/>All
+          </TabsTrigger>
           {CATEGORIES.map(category => (
-            <TabsTrigger key={category} value={category} className="flex items-center justify-center">
-              <CategoryIcon category={category} />
+            <TabsTrigger key={category} value={category} className="flex items-center justify-center gap-2 py-2.5 px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/50 transition-colors duration-150 rounded-md">
+              <CategoryIcon category={category} className="w-5 h-5"/>
               {category}
             </TabsTrigger>
           ))}

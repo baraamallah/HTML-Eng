@@ -5,18 +5,17 @@ import Image from 'next/image';
 import Link from 'next/link'; // Ensured import
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_CHALLENGES } from '@/lib/constants';
+import { MOCK_CREATORS, MOCK_PROJECTS } from '@/lib/constants';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import { Award, BrainCircuit, StarOff } from 'lucide-react'; // Added StarOff
+import { Award, StarOff } from 'lucide-react'; // Removed BrainCircuit
 import { useRef, useState, useEffect } from 'react';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { cn } from '@/lib/utils';
-import { ClientDateDisplay } from '@/components/client-date-display';
+// import { ClientDateDisplay } from '@/components/client-date-display'; // Removed as MOCK_CHALLENGES is removed
 
 export default function HomePage() {
   const featuredProject = MOCK_PROJECTS.find(proj => proj.isFeatured) || (MOCK_PROJECTS.length > 0 ? MOCK_PROJECTS[0] : null);
   const featuredCreator = featuredProject ? (MOCK_CREATORS.find(creator => creator.id === featuredProject.creatorId) || (MOCK_CREATORS.length > 0 ? MOCK_CREATORS[0] : null)) : (MOCK_CREATORS.length > 0 ? MOCK_CREATORS[0] : null);
-
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -32,12 +31,6 @@ export default function HomePage() {
   const featuredCreatorEntry = useIntersectionObserver(featuredCreatorRef, { threshold: 0.1, freezeOnceVisible: false });
   const isFeaturedCreatorObservedVisible = !!featuredCreatorEntry?.isIntersecting;
   const showFeaturedCreatorAnimation = isMounted && isFeaturedCreatorObservedVisible;
-
-  const challengesRef = useRef<HTMLElement>(null);
-  const challengesEntry = useIntersectionObserver(challengesRef, { threshold: 0.1, freezeOnceVisible: false });
-  const isChallengesObservedVisible = !!challengesEntry?.isIntersecting;
-  const showChallengesAnimation = isMounted && isChallengesObservedVisible;
-
 
   return (
     <div className="space-y-12">
@@ -145,48 +138,7 @@ export default function HomePage() {
         style={showFeaturedCreatorAnimation ? { animationDelay: '0.1s' } : { opacity: 0 }}
       />
 
-      <section
-        ref={challengesRef}
-        id="coding-challenges"
-        className={cn(
-          "transition-opacity duration-700 ease-out",
-          showChallengesAnimation ? 'animate-fade-in-up opacity-100' : 'opacity-0'
-        )}
-        style={showChallengesAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
-      >
-        <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><BrainCircuit className="w-8 h-8 text-accent"/> Coding & Design Challenges</h2>
-        {MOCK_CHALLENGES.length > 0 ? (
-          <div className="grid md:grid-cols-2 gap-6">
-            {MOCK_CHALLENGES.map((challenge, index) => {
-              const showChallengeCardAnimation = isMounted && showChallengesAnimation;
-              return (
-              <Card
-                key={challenge.id}
-                className={cn(
-                  "shadow-lg hover:shadow-xl transition-shadow duration-300",
-                  showChallengeCardAnimation ? 'animate-fade-in-up' : 'opacity-0'
-                )}
-                style={showChallengeCardAnimation ? { animationDelay: `${0.1 + index * 0.15}s` } : { opacity: 0 }}
-              >
-                <CardHeader>
-                  <CardTitle className="text-2xl text-primary">{challenge.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-foreground/90 line-clamp-3">{challenge.description}</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Ends: <ClientDateDisplay dateString={challenge.endDate} />
-                  </p>
-                </CardContent>
-                <CardFooter>
-                  <Button>View Challenge</Button>
-                </CardFooter>
-              </Card>
-            )})}
-          </div>
-        ) : (
-          <p className="text-center text-muted-foreground py-8">No active challenges at the moment. Stay tuned!</p>
-        )}
-      </section>
+      {/* Coding & Design Challenges Section Removed */}
     </div>
   );
 }
