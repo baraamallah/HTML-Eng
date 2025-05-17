@@ -8,26 +8,34 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_CHALLENGES } from '@/lib/constants';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { Award, BrainCircuit } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react'; // Added useState, useEffect
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { cn } from '@/lib/utils';
-import { ClientDateDisplay } from '@/components/client-date-display'; // Added import
+import { ClientDateDisplay } from '@/components/client-date-display';
 
 export default function HomePage() {
   const featuredCreator = MOCK_CREATORS.find(creator => creator.id === MOCK_PROJECTS.find(proj => proj.isFeatured)?.creatorId) || MOCK_CREATORS[0];
   const featuredProject = MOCK_PROJECTS.find(proj => proj.isFeatured) || MOCK_PROJECTS[0];
 
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const heroRef = useRef<HTMLElement>(null);
   const heroEntry = useIntersectionObserver(heroRef, { threshold: 0.1, freezeOnceVisible: false });
-  const isHeroVisible = !!heroEntry?.isIntersecting;
+  const isHeroObservedVisible = !!heroEntry?.isIntersecting;
+  const showHeroAnimation = isMounted && isHeroObservedVisible;
 
   const featuredCreatorRef = useRef<HTMLElement>(null);
   const featuredCreatorEntry = useIntersectionObserver(featuredCreatorRef, { threshold: 0.1, freezeOnceVisible: false });
-  const isFeaturedCreatorVisible = !!featuredCreatorEntry?.isIntersecting;
-  
+  const isFeaturedCreatorObservedVisible = !!featuredCreatorEntry?.isIntersecting;
+  const showFeaturedCreatorAnimation = isMounted && isFeaturedCreatorObservedVisible;
+
   const challengesRef = useRef<HTMLElement>(null);
   const challengesEntry = useIntersectionObserver(challengesRef, { threshold: 0.1, freezeOnceVisible: false });
-  const isChallengesVisible = !!challengesEntry?.isIntersecting;
+  const isChallengesObservedVisible = !!challengesEntry?.isIntersecting;
+  const showChallengesAnimation = isMounted && isChallengesObservedVisible;
 
   return (
     <div className="space-y-12">
@@ -35,9 +43,9 @@ export default function HomePage() {
         ref={heroRef}
         className={cn(
           "text-center py-12 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg shadow-lg",
-          isHeroVisible ? 'animate-fade-in-up' : 'opacity-0'
+          showHeroAnimation ? 'animate-fade-in-up' : 'opacity-0'
         )}
-        style={isHeroVisible ? { animationDelay: '0s' } : { opacity: 0 }}
+        style={showHeroAnimation ? { animationDelay: '0s' } : { opacity: 0 }}
       >
         <h1 className="text-5xl font-bold mb-4 text-primary">Welcome to DevPortfolio Hub</h1>
         <p className="text-xl text-foreground/80 mb-8 max-w-3xl mx-auto">
@@ -48,12 +56,12 @@ export default function HomePage() {
         </Button>
       </section>
 
-      <BrushStrokeDivider 
+      <BrushStrokeDivider
         className={cn(
             "mx-auto h-8 w-40 text-primary/50",
-            isHeroVisible ? 'animate-fade-in-up' : 'opacity-0' // Trigger with hero visibility for cascading effect
+            showHeroAnimation ? 'animate-fade-in-up' : 'opacity-0'
         )}
-        style={isHeroVisible ? { animationDelay: '0.1s' } : { opacity: 0 }} 
+        style={showHeroAnimation ? { animationDelay: '0.1s' } : { opacity: 0 }}
       />
 
       {featuredCreator && featuredProject && (
@@ -61,10 +69,10 @@ export default function HomePage() {
           ref={featuredCreatorRef}
           id="featured-creator"
           className={cn(
-            "transition-opacity duration-700 ease-out",
-            isFeaturedCreatorVisible ? 'animate-fade-in-up opacity-100' : 'opacity-0'
+            "transition-opacity duration-700 ease-out", // Keep existing transition for smoothness
+            showFeaturedCreatorAnimation ? 'animate-fade-in-up opacity-100' : 'opacity-0'
           )}
-          style={isFeaturedCreatorVisible ? { animationDelay: '0.2s' } : { opacity: 0 }}
+          style={showFeaturedCreatorAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
         >
           <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><Award className="w-8 h-8 text-accent" /> Featured Creator of the Week</h2>
           <Card className="overflow-hidden shadow-xl transform hover:scale-101 transition-transform duration-300">
@@ -88,11 +96,11 @@ export default function HomePage() {
                   <p className="mb-4 text-foreground/90 line-clamp-3">{featuredCreator.bio}</p>
                   <h4 className="font-semibold text-accent mb-2">Featured Project: "{featuredProject.title}"</h4>
                   <Link href={`/gallery?project=${featuredProject.id}`}>
-                    <Image 
+                    <Image
                       src={featuredProject.previewImageUrl}
-                      alt={featuredProject.title} 
-                      width={200} 
-                      height={150} 
+                      alt={featuredProject.title}
+                      width={200}
+                      height={150}
                       className="rounded-md shadow-md hover:opacity-80 transition-opacity"
                       data-ai-hint={featuredProject.dataAiHint || "project preview"}
                     />
@@ -108,13 +116,13 @@ export default function HomePage() {
           </Card>
         </section>
       )}
-      
-      <BrushStrokeDivider 
+
+      <BrushStrokeDivider
         className={cn(
           "mx-auto h-8 w-40 text-primary/50",
-           isFeaturedCreatorVisible ? 'animate-fade-in-up' : 'opacity-0'  // Trigger with featured creator visibility
+           showFeaturedCreatorAnimation ? 'animate-fade-in-up' : 'opacity-0'
         )}
-        style={isFeaturedCreatorVisible ? { animationDelay: '0.1s' } : { opacity: 0 }} // Shorter delay relative to its trigger
+        style={showFeaturedCreatorAnimation ? { animationDelay: '0.1s' } : { opacity: 0 }}
       />
 
       <section
@@ -122,21 +130,22 @@ export default function HomePage() {
         id="coding-challenges"
         className={cn(
           "transition-opacity duration-700 ease-out",
-          isChallengesVisible ? 'animate-fade-in-up opacity-100' : 'opacity-0'
+          showChallengesAnimation ? 'animate-fade-in-up opacity-100' : 'opacity-0'
         )}
-        style={isChallengesVisible ? { animationDelay: '0.2s' } : { opacity: 0 }}
+        style={showChallengesAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
       >
         <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><BrainCircuit className="w-8 h-8 text-accent"/> Coding & Design Challenges</h2>
         <div className="grid md:grid-cols-2 gap-6">
           {MOCK_CHALLENGES.map((challenge, index) => {
+            const showChallengeCardAnimation = isMounted && showChallengesAnimation; // Card animates if section is visible & mounted
             return (
-            <Card 
-              key={challenge.id} 
+            <Card
+              key={challenge.id}
               className={cn(
                 "shadow-lg hover:shadow-xl transition-shadow duration-300",
-                isChallengesVisible ? 'animate-fade-in-up' : 'opacity-0' 
+                showChallengeCardAnimation ? 'animate-fade-in-up' : 'opacity-0'
               )}
-              style={{ animationDelay: `${0.1 + index * 0.15}s` }}
+              style={showChallengeCardAnimation ? { animationDelay: `${0.1 + index * 0.15}s` } : { opacity: 0 }}
             >
               <CardHeader>
                 <CardTitle className="text-2xl text-primary">{challenge.title}</CardTitle>
