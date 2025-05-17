@@ -8,17 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { auth, db } from '@/lib/firebase'; // Assuming db is your Firestore instance
+import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-// import { doc, setDoc } from 'firebase/firestore'; // For creating a user profile document - future step
+import { doc, setDoc } from 'firebase/firestore'; // Added for creating creator document
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, AlertCircle } from 'lucide-react';
+import type { Creator } from '@/types';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [displayName, setDisplayName] = useState(''); // Optional: for user's display name
+  const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -35,25 +36,32 @@ export default function SignupPage() {
     setError(null);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Optionally, update the user's profile with a display name
-      if (displayName && userCredential.user) {
-        await updateProfile(userCredential.user, { displayName });
+      const user = userCredential.user;
+
+      if (displayName && user) {
+        await updateProfile(user, { displayName });
       }
 
-      // Optional: Create a user document in Firestore (e.g., in a 'users' or 'creators' collection)
-      // This is where you'd store additional profile info.
-      // const userDocRef = doc(db, 'users', userCredential.user.uid);
-      // await setDoc(userDocRef, {
-      //   uid: userCredential.user.uid,
-      //   email: userCredential.user.email,
-      //   displayName: displayName || userCredential.user.email,
-      //   createdAt: new Date().toISOString(),
-      //   // Add other profile fields here
-      // });
+      // Create a new creator document in Firestore
+      if (user) {
+        const newCreatorData: Creator = {
+          id: user.uid,
+          name: displayName || user.email || 'Anonymous Creator',
+          photoUrl: `https://placehold.co/200x200.png?text=${encodeURIComponent((displayName || user.email || 'User').split(' ')[0])}`,
+          dataAiHint: 'creator photo',
+          bio: 'Newly joined creator. Update your bio via admin!',
+          location: '',
+          githubUsername: '',
+          linkedInProfile: '',
+          personalWebsite: '',
+          statement: '',
+        };
+        await setDoc(doc(db, 'creators', user.uid), newCreatorData);
+        toast({ title: 'Creator Profile Created', description: 'A basic creator profile has been added to Firestore.' });
+      }
 
       toast({ title: 'Signup Successful', description: 'Welcome to DevPortfolio Hub!' });
-      router.push('/dashboard/my-projects'); // Redirect to dashboard or homepage
+      router.push('/dashboard/my-projects'); 
     } catch (err: any) {
       setError(err.message || 'Failed to sign up. Please try again.');
       toast({ title: 'Signup Failed', description: err.message || 'Could not create account.', variant: 'destructive' });
