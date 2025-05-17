@@ -19,8 +19,8 @@ import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc,
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_SITE_SETTINGS } from '@/lib/constants';
 import Link from 'next/link';
 
-// !!! IMPORTANT: Replace this with YOUR actual Firebase Admin User ID !!!
-const ADMIN_UID = "YOUR_ADMIN_FIREBASE_UID_HERE"; 
+// !!! IMPORTANT: This is the Admin Firebase User ID !!!
+const ADMIN_UID = "Jiz18K1A6xewOuEnSGPb1ybZkUF3"; 
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
