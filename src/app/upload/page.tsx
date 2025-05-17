@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CATEGORIES } from '@/lib/constants';
-import type { Category } from '@/types';
+import type { Category, Project } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Edit3, CheckCircle, ExternalLink, LogIn, UserCheck, ImagePlus, UserCog } from 'lucide-react';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
@@ -27,11 +27,11 @@ import Link from 'next/link';
 const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().optional(),
-  tags: z.string().optional(), // Comma-separated string
+  tags: z.string().optional(), 
   category: z.enum(CATEGORIES, { required_error: 'Please select a category' }),
   previewImageUrl: z.string().url({ message: "Please enter a valid URL for the preview image." }).min(1, "Preview Image URL is required."),
   projectUrl: z.string().url({ message: "Please enter a valid URL (e.g., GitHub, live demo)" }).optional().or(z.literal('')),
-  techStack: z.string().optional(), // Comma-separated string for tech stack
+  techStack: z.string().optional(), 
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -97,14 +97,18 @@ export default function UploadPage() {
       try {
         const draft = localStorage.getItem('uploadFormDraft');
         if (draft) {
-          const parsedDraft = JSON.parse(draft);
-          form.reset(parsedDraft); 
+          const parsedDraft = JSON.parse(draft) as ProjectFormData;
+          // Only reset if parsedDraft is not empty, to prevent overwriting with empty object
+          if (Object.keys(parsedDraft).length > 0) {
+            form.reset(parsedDraft);
+          }
         }
       } catch (error) {
         console.warn("Could not load draft from localStorage:", error);
       }
     }
-  }, [form, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // form.reset is stable, no need to include
   
   const onSubmit = async (data: ProjectFormData) => {
     if (!user) {
@@ -118,7 +122,7 @@ export default function UploadPage() {
       return title.toLowerCase().split(' ').slice(0, 2).join(' ') || 'project image';
     };
 
-    const projectData = { 
+    const projectDataToSave: Omit<Project, 'id'> = { 
       title: data.title,
       description: data.description || '',
       tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
@@ -131,17 +135,25 @@ export default function UploadPage() {
       uploadDate: new Date().toISOString(), 
       isFeatured: false,
       dataAiHint: generateDataAiHint(data.title),
-      createdAt: serverTimestamp(),
+      createdAt: serverTimestamp() as any, // Type assertion for serverTimestamp
     };
     
     try {
-      const docRef = await addDoc(collection(db, 'projects'), projectData);
+      const docRef = await addDoc(collection(db, 'projects'), projectDataToSave);
       toast({ 
         title: 'Project Submitted!', 
-        description: `"${data.title}" has been saved to Firestore.`,
+        description: `"${data.title}" has been saved with ID: ${docRef.id}.`,
         className: "bg-green-100 border-green-400 text-green-800"
       });
-      form.reset();
+      form.reset({ // Reset to truly empty state after successful submission
+        title: '',
+        description: '',
+        tags: '',
+        previewImageUrl: '',
+        projectUrl: '',
+        techStack: '',
+        category: undefined, // Reset category if possible, or handle default in UI
+      });
       localStorage.removeItem('uploadFormDraft');
       setStep(1); 
       router.push('/dashboard/my-projects'); 
@@ -220,7 +232,7 @@ export default function UploadPage() {
               <div>
                 <Label htmlFor="previewImageUrl">Project Preview Image URL</Label>
                 <Input id="previewImageUrl" {...form.register('previewImageUrl')} placeholder="https://example.com/your-image.png" />
-                <p className="text-xs text-muted-foreground mt-1">Provide a direct link to an already hosted image.</p>
+                <p className="text-xs text-muted-foreground mt-1">Provide a direct link to an already hosted image (e.g., Imgur, Cloudinary, or your own hosting). This image will be used as the thumbnail.</p>
                 {form.formState.errors.previewImageUrl && <p className="text-sm font-medium text-destructive">{form.formState.errors.previewImageUrl.message}</p>}
               </div>
                <div>
@@ -265,11 +277,12 @@ export default function UploadPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="projectUrl">Project URL (e.g., GitHub, Live Demo, Figma)</Label>
+                <Label htmlFor="projectUrl">Project URL (Optional)</Label>
                 <div className="relative">
-                  <Input id="projectUrl" {...form.register('projectUrl')} placeholder="https://github.com/yourname/project" className="pl-8" />
+                  <Input id="projectUrl" {...form.register('projectUrl')} placeholder="https://github.com/yourname/project or https://your-live-demo.com" className="pl-8" />
                   <ExternalLink className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Link to your GitHub repository, live demo, Figma file, etc.</p>
                 {form.formState.errors.projectUrl && <p className="text-sm font-medium text-destructive">{form.formState.errors.projectUrl.message}</p>}
               </div>
 
@@ -279,12 +292,12 @@ export default function UploadPage() {
               </div>
 
               <div>
-                <Label htmlFor="techStack">Tech Stack (Comma-separated)</Label>
+                <Label htmlFor="techStack">Tech Stack (Comma-separated, Optional)</Label>
                 <Input id="techStack" {...form.register('techStack')} placeholder="E.g., React, Node.js, Python, Figma" />
               </div>
 
               <div>
-                <Label htmlFor="tags">Tags (Comma-separated)</Label>
+                <Label htmlFor="tags">Tags (Comma-separated, Optional)</Label>
                 <Input id="tags" {...form.register('tags')} placeholder="E.g., full-stack, ui-design, machine-learning, game-dev" />
               </div>
             </CardContent>
@@ -315,9 +328,9 @@ export default function UploadPage() {
                                   width={200} 
                                   height={150} 
                                   className="rounded-md shadow-md object-contain max-h-40 mt-1" 
-                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }}
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; const nextSibling = (e.target as HTMLImageElement).nextElementSibling; if (nextSibling) nextSibling.classList.remove('hidden'); }}
                                 />
-                                <span className="text-destructive text-xs hidden">Could not load preview image.</span>
+                                <span className="text-destructive text-xs hidden">Could not load preview image. Please check the URL.</span>
                             </div>
                         }
                         {form.getValues('projectUrl') && <p><strong>Project URL:</strong> <Link href={form.getValues('projectUrl')!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{form.getValues('projectUrl')}</Link></p>}

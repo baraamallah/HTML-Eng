@@ -14,13 +14,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid, Loader2, AlertCircle, ExternalLink, UserCircle } from 'lucide-react';
+import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid, Loader2, AlertCircle, ExternalLink, UserCircle, Github } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 const CategoryIcon = ({ category, className }: { category: Category, className?: string }) => {
-  const iconProps = { className: className || "w-5 h-5 mr-2" }; // Adjusted default icon size
+  const iconProps = { className: className || "w-5 h-5" };
   switch (category) {
     case 'Web App': return <Code2 {...iconProps} />;
     case 'Mobile App': return <Smartphone {...iconProps} />;
@@ -32,7 +32,7 @@ const CategoryIcon = ({ category, className }: { category: Category, className?:
 };
 
 const FALLBACK_MODAL_IMAGE_URL = 'https://placehold.co/800x450.png?text=Preview+Error';
-const ALLOWED_MODAL_HOSTNAMES = ['placehold.co'];
+const ALLOWED_MODAL_HOSTNAMES = ['placehold.co']; // Add other allowed hostnames here if needed
 
 export default function GalleryPage() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
@@ -109,9 +109,10 @@ export default function GalleryPage() {
     return categoryMatch && searchMatch;
   }).sort((a, b) => {
     if (sortBy === 'date') {
-      const dateA = a.createdAt ? new Date(typeof a.createdAt === 'string' ? a.createdAt : (a.createdAt as any).toDate()).getTime() : new Date(a.uploadDate).getTime();
-      const dateB = b.createdAt ? new Date(typeof b.createdAt === 'string' ? b.createdAt : (b.createdAt as any).toDate()).getTime() : new Date(b.uploadDate).getTime();
-      return dateB - dateA;
+      // Ensure createdAt is a valid Date object or can be converted to one
+      const dateA = a.createdAt ? (typeof a.createdAt === 'string' ? new Date(a.createdAt) : (a.createdAt as any).toDate ? (a.createdAt as any).toDate() : new Date(a.uploadDate)) : new Date(a.uploadDate);
+      const dateB = b.createdAt ? (typeof b.createdAt === 'string' ? new Date(b.createdAt) : (b.createdAt as any).toDate ? (b.createdAt as any).toDate() : new Date(b.uploadDate)) : new Date(b.uploadDate);
+      return dateB.getTime() - dateA.getTime();
     }
     return 0;
   });
@@ -269,8 +270,8 @@ export default function GalleryPage() {
             <DialogFooter className="sm:justify-start gap-2">
               {selectedProject.projectUrl && (
                 <Button asChild>
-                  <Link href={selectedProject.projectUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" />
+                  <Link href={selectedProject.projectUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                    {selectedProject.projectUrl.includes('github.com') ? <Github className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
                     View Project / Source
                   </Link>
                 </Button>
