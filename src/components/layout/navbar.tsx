@@ -76,18 +76,7 @@ export default function Navbar() {
               <Settings className="h-5 w-5" />
             </Link>
           </Button>
-           <Link href="/" passHref aria-label="School Logo - Home">
-            <div className="ml-2 cursor-pointer">
-              <Image
-                src="https://placehold.co/100x40.png?text=Logo" // Replace with your actual logo path in /public
-                alt="School Logo"
-                width={100} 
-                height={40}
-                className="object-contain"
-                data-ai-hint="school logo"
-              />
-            </div>
-          </Link>
+           {/* School Logo removed from here */}
         </div>
       </div>
     </nav>
