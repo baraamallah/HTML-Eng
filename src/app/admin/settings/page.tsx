@@ -69,8 +69,8 @@ export default function AdminSettingsPage() {
       website: newCreatorWebsite,
     });
      toast({
-      title: 'Prototype Add Creator',
-      description: `${newCreatorName} would be added in a real app.`,
+      title: 'Prototype: Add Creator',
+      description: `${newCreatorName || 'New creator'} would be added in a real app. Data logged to console.`,
     });
     setNewCreatorName('');
     setNewCreatorBio('');
@@ -78,6 +78,20 @@ export default function AdminSettingsPage() {
     setNewCreatorLinkedIn('');
     setNewCreatorWebsite('');
   }
+
+  const handleEditCreator = (creatorName: string) => {
+    toast({
+      title: 'Prototype: Edit Creator',
+      description: `Editing functionality for ${creatorName} would be implemented here in a real app.`,
+    });
+  };
+
+  const handleEditProject = (projectTitle: string) => {
+    toast({
+      title: 'Prototype: Edit Project',
+      description: `Editing functionality for ${projectTitle} would be implemented here in a real app.`,
+    });
+  };
 
   if (!isAuthenticated) {
     return (
@@ -101,11 +115,11 @@ export default function AdminSettingsPage() {
             </div>
              <Button onClick={() => setShowPasswordHint(!showPasswordHint)} variant="link" size="sm" className="text-xs text-muted-foreground p-0 h-auto">
               {showPasswordHint ? <EyeOff className="mr-1" /> : <Eye className="mr-1" />}
-              {showPasswordHint ? 'Hide' : 'Forgot Password? (Hint)'}
+              {showPasswordHint ? 'Hide Hint' : 'Forgot Password? (Hint)'}
             </Button>
             {showPasswordHint && (
               <p className="text-xs text-primary bg-primary/10 p-2 rounded-md">
-                Prototype password is: <strong>{ADMIN_PASSWORD}</strong>
+                Hint: The prototype password is <strong><code>{ADMIN_PASSWORD}</code></strong>
               </p>
             )}
           </CardContent>
@@ -128,15 +142,15 @@ export default function AdminSettingsPage() {
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
 
-      <Accordion type="multiple" defaultValue={['site-config', 'creator-management']} className="w-full space-y-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+      <Accordion type="multiple" defaultValue={['site-config']} className="w-full space-y-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         
         <AccordionItem value="site-config">
           <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline">
-              <CardHeader className="p-0 flex-row items-center gap-3 w-full"> {/* Added w-full for proper trigger behavior */}
+            <AccordionTrigger className="p-6 hover:no-underline text-left">
+              <div className="flex items-center gap-3">
                 <Globe className="w-6 h-6 text-accent" />
-                <CardTitle className="text-2xl">Site Configuration</CardTitle>
-              </CardHeader>
+                <h3 className="text-2xl font-semibold text-foreground">Site Configuration</h3>
+              </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
               <div className="space-y-4">
@@ -160,11 +174,11 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="creator-management">
           <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline">
-              <CardHeader className="p-0 flex-row items-center gap-3 w-full">
-                 <UserPlus className="w-6 h-6 text-accent" />
-                <CardTitle className="text-2xl">Creator Management</CardTitle>
-              </CardHeader>
+            <AccordionTrigger className="p-6 hover:no-underline text-left">
+              <div className="flex items-center gap-3">
+                <UserPlus className="w-6 h-6 text-accent" />
+                <h3 className="text-2xl font-semibold text-foreground">Creator Management</h3>
+              </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
               <div className="space-y-6">
@@ -178,8 +192,8 @@ export default function AdminSettingsPage() {
                       <Input id="newCreatorName" value={newCreatorName} onChange={(e) => setNewCreatorName(e.target.value)} placeholder="e.g., Ada Lovelace" />
                     </div>
                     <div>
-                      <Label htmlFor="newCreatorPhoto">Photo URL</Label>
-                      <Input id="newCreatorPhoto" placeholder="/img/creator-new.png (will be stored in /public/img)" />
+                      <Label htmlFor="newCreatorPhoto">Photo URL Path</Label>
+                      <Input id="newCreatorPhoto" placeholder="e.g., /img/creator-new.png (in public/img)" />
                     </div>
                     <div>
                       <Label htmlFor="newCreatorBio">Bio</Label>
@@ -209,7 +223,9 @@ export default function AdminSettingsPage() {
                     {MOCK_CREATORS.map(creator => (
                       <li key={creator.id} className="flex justify-between items-center p-3 border rounded-md bg-card-foreground/5">
                         <span>{creator.name}</span>
-                        <Button variant="outline" size="sm"><Edit3 className="mr-2"/>Edit (Prototype)</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleEditCreator(creator.name)}>
+                            <Edit3 className="mr-2"/>Edit (Prototype)
+                        </Button>
                       </li>
                     ))}
                   </ul>
@@ -221,24 +237,28 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="project-management">
            <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline">
-                <CardHeader className="p-0 flex-row items-center gap-3 w-full">
+            <AccordionTrigger className="p-6 hover:no-underline text-left">
+                <div className="flex items-center gap-3">
                     <ListChecks className="w-6 h-6 text-accent" />
-                    <CardTitle className="text-2xl">Project Management</CardTitle>
-                </CardHeader>
+                    <h3 className="text-2xl font-semibold text-foreground">Project Management</h3>
+                </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
                 <p className="text-sm text-muted-foreground mb-4">Edit existing project details. Adding new projects is done via the main "Share Project" page.</p>
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                     {MOCK_PROJECTS.slice(0,3).map(project => ( 
-                      <li key={project.id} className="flex justify-between items-center p-3 border rounded-md bg-card-foreground/5">
-                        <div>
-                            <p className="font-semibold">{project.title}</p>
-                            <p className="text-xs text-muted-foreground">By {project.creatorName}</p>
-                             {project.projectUrl && <p className="text-xs text-muted-foreground truncate">URL: {project.projectUrl}</p>}
-                             {project.techStack && project.techStack.length > 0 && <p className="text-xs text-muted-foreground truncate">Tech: {project.techStack.join(', ')}</p>}
+                      <li key={project.id} className="p-3 border rounded-md bg-card-foreground/5 space-y-1">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="font-semibold">{project.title}</p>
+                                <p className="text-xs text-muted-foreground">By {project.creatorName}</p>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => handleEditProject(project.title)}>
+                                <Edit3 className="mr-2"/>Edit (Prototype)
+                            </Button>
                         </div>
-                        <Button variant="outline" size="sm"><Edit3 className="mr-2"/>Edit Project (Prototype)</Button>
+                         {project.projectUrl && <p className="text-xs text-muted-foreground truncate">URL: <a href={project.projectUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{project.projectUrl}</a></p>}
+                         {project.techStack && project.techStack.length > 0 && <p className="text-xs text-muted-foreground truncate">Tech: {project.techStack.join(', ')}</p>}
                       </li>
                     ))}
                   </ul>
@@ -248,11 +268,11 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="page-content">
           <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline">
-                <CardHeader className="p-0 flex-row items-center gap-3 w-full">
+            <AccordionTrigger className="p-6 hover:no-underline text-left">
+                <div className="flex items-center gap-3">
                     <Edit3 className="w-6 h-6 text-accent" />
-                    <CardTitle className="text-2xl">Page Content Editor</CardTitle>
-                </CardHeader>
+                    <h3 className="text-2xl font-semibold text-foreground">Page Content Editor</h3>
+                </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
               <div className="space-y-4">
@@ -283,4 +303,3 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
-

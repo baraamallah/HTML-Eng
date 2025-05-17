@@ -7,17 +7,15 @@ export const MOCK_CREATORS: Creator[] = [
   {
     id: 'dev1',
     name: 'Zaid Naholi',
-    photoUrl: '/img/creator-zaid-naholi.png', // Use this if you upload a specific image
-    // photoUrl: 'https://source.unsplash.com/random/200x200/?male,developer,portrait',
+    photoUrl: '/img/creator-zaid-naholi.png', 
     dataAiHint: 'male developer',
     location: 'Silicon Valley, CA',
     bio: 'Full-stack developer with a passion for creating intuitive web applications. Loves Next.js and serverless architectures. Specializes in React, TypeScript, and Node.js. Avid open-source contributor.',
     statement: 'Code is my canvas. I strive to build software that is not only functional but also a joy to use, accessible to everyone, and performs reliably under pressure.',
     githubUsername: 'zaidnaholi',
-    linkedInProfile: 'https://www.linkedin.com/in/zaidnaholi-mock', // Example LinkedIn URL
-    personalWebsite: 'https://zaidnaholi.dev', // Example personal website
+    linkedInProfile: 'https://www.linkedin.com/in/zaidnaholi-mock', 
+    personalWebsite: 'https://zaidnaholi.dev', 
   },
-  // Bob Byte removed
 ];
 
 export const MOCK_PROJECTS: Project[] = [
@@ -26,8 +24,7 @@ export const MOCK_PROJECTS: Project[] = [
     title: 'Ecoleta - Recycling Finder',
     description: 'A web application helping users find nearby recycling points for various materials. Built with Next.js, TypeScript, and Mapbox. Features include user authentication, location-based search, and contribution of new collection points.',
     tags: ['web app', 'nextjs', 'typescript', 'sustainability', 'maps', 'full-stack'],
-    previewImageUrl: '/img/project-ecoleta-preview.png', // Use this for uploaded image
-    // previewImageUrl: 'https://source.unsplash.com/random/600x400/?app,map,interface',
+    previewImageUrl: '/img/project-ecoleta-preview.png', 
     dataAiHint: 'app map',
     category: 'Web App',
     creatorId: 'dev1',
@@ -43,7 +40,6 @@ export const MOCK_PROJECTS: Project[] = [
     description: 'A Python script that scrapes headlines from various news websites using BeautifulSoup and Requests. Includes error handling and data export to CSV format.',
     tags: ['python', 'web scraping', 'automation', 'script', 'data', 'cli'],
     previewImageUrl: '/img/project-python-scraper-preview.png',
-    // previewImageUrl: 'https://source.unsplash.com/random/600x400/?code,editor,python',
     dataAiHint: 'code editor',
     category: 'Code Snippet',
     creatorId: 'dev1',
@@ -58,7 +54,6 @@ export const MOCK_PROJECTS: Project[] = [
     description: 'A lightweight, embeddable Markdown editor component built with Svelte. Features real-time preview, toolbar customization, and plugin support. Open source and community-driven.',
     tags: ['open source', 'javascript', 'markdown', 'library', 'svelte', 'wysiwyg'],
     previewImageUrl: '/img/project-markdown-editor-preview.png',
-    // previewImageUrl: 'https://source.unsplash.com/random/600x400/?web,interface,editor',
     dataAiHint: 'web interface',
     category: 'Open Source Project',
     creatorId: 'dev1',
@@ -87,4 +82,3 @@ export const MOCK_CHALLENGES: ProjectChallenge[] = [
 export const getCreatorById = (id: string): Creator | undefined => MOCK_CREATORS.find(creator => creator.id === id);
 export const getProjectsByCreator = (creatorId: string): Project[] => MOCK_PROJECTS.filter(project => project.creatorId === creatorId);
 export const getProjectById = (id: string): Project | undefined => MOCK_PROJECTS.find(project => project.id === id);
-
