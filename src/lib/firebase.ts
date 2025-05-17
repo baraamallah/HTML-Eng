@@ -5,21 +5,16 @@ import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
-const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-
-if (!apiKey) {
-  console.warn(
-    'Firebase API Key is missing. Make sure NEXT_PUBLIC_FIREBASE_API_KEY is set in your .env.local file and you have restarted your development server.'
-  );
-}
-
+// User-provided Firebase configuration
 const firebaseConfig = {
-  apiKey: apiKey,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyDelN4gM_U9wAyFUIiBvMI5piWfhkfgiFo",
+  authDomain: "devportfolio-hub.firebaseapp.com",
+  // databaseURL: "https://devportfolio-hub-default-rtdb.firebaseio.com", // Realtime Database URL, not used by Firestore
+  projectId: "devportfolio-hub",
+  storageBucket: "devportfolio-hub.appspot.com", // Corrected typical storage bucket format
+  messagingSenderId: "834909353622",
+  appId: "1:834909353622:web:305f430d3c0698597d74b7",
+  measurementId: "G-KDKWHPVWXP" // Optional, typically for Analytics
 };
 
 let app: FirebaseApp;
@@ -65,7 +60,6 @@ if (typeof window !== 'undefined') { // Ensure Firebase is initialized only on t
 } else {
   // If on the server, provide dummy objects or handle as appropriate
   // For now, keeping them as potentially undefined on server and relying on client-side usage
-  // Or, initialize for admin SDK if server-side operations are needed
    // @ts-ignore
    auth = {}; // Provide dummy/placeholder objects
    // @ts-ignore
@@ -74,6 +68,5 @@ if (typeof window !== 'undefined') { // Ensure Firebase is initialized only on t
    storage = {};
    console.warn("Firebase SDK intended for client-side, dummy objects provided for server-side rendering context if imported directly.");
 }
-
 
 export { app, auth, db, storage };
