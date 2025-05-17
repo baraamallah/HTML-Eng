@@ -17,11 +17,11 @@ export default function CreatorsPage() {
       </header>
 
       {MOCK_CREATORS.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="flex flex-wrap justify-center gap-8"> {/* Updated classes for centering */}
           {MOCK_CREATORS.map((creator, index) => (
             <Card 
               key={creator.id} 
-              className="group overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col animate-fade-in-up"
+              className="group w-full max-w-sm overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col animate-fade-in-up" // Added w-full max-w-sm
               style={{ animationDelay: `${0.2 + index * 0.1}s` }}
             >
               <CardHeader className="items-center text-center">
