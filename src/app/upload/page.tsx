@@ -143,6 +143,10 @@ export default function UploadPage() {
     }
     setIsSubmitting(true);
 
+    const generateDataAiHint = (title: string): string => {
+      return title.toLowerCase().split(' ').slice(0, 2).join(' ') || 'project image';
+    };
+
     const projectData: Omit<Project, 'id'> = {
       title: data.title,
       description: data.description || '',
@@ -155,7 +159,7 @@ export default function UploadPage() {
       creatorName: currentUser.displayName || currentUser.email || 'Anonymous Creator',
       uploadDate: new Date().toISOString(),
       isFeatured: false, // Default, can be changed in admin
-      dataAiHint: data.title.toLowerCase().split(' ').slice(0,2).join(' ') || 'project image', // Simple hint from title
+      dataAiHint: generateDataAiHint(data.title),
     };
     
     try {
