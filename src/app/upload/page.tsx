@@ -16,19 +16,22 @@ import { CATEGORIES } from '@/lib/constants';
 import type { Category, Project } from '@/types';
 import { generateProjectDetailsAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Sparkles, Edit3, CheckCircle, ExternalLink, LogIn, AlertCircle, UserCheck, ImagePlus } from 'lucide-react';
+import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Sparkles, Edit3, CheckCircle, ExternalLink, LogIn, AlertCircle, UserCheck, ImagePlus, UserCog } from 'lucide-react';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { cn } from '@/lib/utils';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
 
 const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().optional(),
   tags: z.string().optional(), // Comma-separated string
   category: z.enum(CATEGORIES, { required_error: 'Please select a category' }),
-  previewImageUrl: z.string().url({ message: "Please enter a valid URL for the preview image." }),
+  previewImageUrl: z.string().url({ message: "Please enter a valid URL for the preview image." }).min(1, "Preview Image URL is required."),
   projectUrl: z.string().url({ message: "Please enter a valid URL (e.g., GitHub, live demo)" }).optional().or(z.literal('')),
   techStack: z.string().optional(), // Comma-separated string for tech stack
   aiPreviewImage: z.any().optional(), // FileList for AI generation, now optional
@@ -55,9 +58,9 @@ export default function UploadPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [user, loadingAuth, errorAuth] = useAuthState(auth);
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -72,17 +75,22 @@ export default function UploadPage() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setIsLoadingAuth(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    if (!loadingAuth && !user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please login to share a project.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+      router.push('/login?redirect=/upload');
+    }
+  }, [user, loadingAuth, router, toast]);
+  
 
   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
-        const { aiPreviewImage, ...restOfDraft } = value; // Exclude FileList from localStorage
+        const { aiPreviewImage, ...restOfDraft } = value; 
         localStorage.setItem('uploadFormDraft', JSON.stringify(restOfDraft));
       } catch (error) {
         console.warn("Could not save draft to localStorage:", error);
@@ -92,16 +100,18 @@ export default function UploadPage() {
   }, [form]);
 
   useEffect(() => {
-    try {
-      const draft = localStorage.getItem('uploadFormDraft');
-      if (draft) {
-        const parsedDraft = JSON.parse(draft);
-        form.reset(parsedDraft); 
+    if (user) { // Only load draft if user is logged in
+      try {
+        const draft = localStorage.getItem('uploadFormDraft');
+        if (draft) {
+          const parsedDraft = JSON.parse(draft);
+          form.reset(parsedDraft); 
+        }
+      } catch (error) {
+        console.warn("Could not load draft from localStorage:", error);
       }
-    } catch (error) {
-      console.warn("Could not load draft from localStorage:", error);
     }
-  }, [form]);
+  }, [form, user]);
 
   const handleAIFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -137,8 +147,9 @@ export default function UploadPage() {
   };
   
   const onSubmit = async (data: ProjectFormData) => {
-    if (!currentUser) {
+    if (!user) {
       toast({ title: 'Authentication Required', description: 'Please log in to share a project.', variant: 'destructive' });
+      router.push('/login?redirect=/upload');
       return;
     }
     setIsSubmitting(true);
@@ -147,33 +158,36 @@ export default function UploadPage() {
       return title.toLowerCase().split(' ').slice(0, 2).join(' ') || 'project image';
     };
 
-    const projectData: Omit<Project, 'id'> = {
+    const projectData = { // Explicitly type this if Project type is available and matches
       title: data.title,
       description: data.description || '',
       tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
       category: data.category,
-      previewImageUrl: data.previewImageUrl, // This is now a URL string from input
+      previewImageUrl: data.previewImageUrl,
       projectUrl: data.projectUrl || '',
       techStack: data.techStack ? data.techStack.split(',').map(tech => tech.trim()).filter(tech => tech) : [],
-      creatorId: currentUser.uid,
-      creatorName: currentUser.displayName || currentUser.email || 'Anonymous Creator',
+      creatorId: user.uid,
+      creatorName: user.displayName || user.email || 'Anonymous Creator',
       uploadDate: new Date().toISOString(),
-      isFeatured: false, // Default, can be changed in admin
+      isFeatured: false,
       dataAiHint: generateDataAiHint(data.title),
+      // Add serverTimestamp for Firestore for better sorting/querying by creation time
+      createdAt: serverTimestamp(),
     };
     
     try {
       const docRef = await addDoc(collection(db, 'projects'), projectData);
       toast({ 
         title: 'Project Submitted!', 
-        description: `"${data.title}" has been saved to Firestore with ID: ${docRef.id}.`,
+        description: `"${data.title}" has been saved to Firestore.`,
         className: "bg-green-100 border-green-400 text-green-800"
       });
       form.reset();
       setAiGeneratedPreviewUrl(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       localStorage.removeItem('uploadFormDraft');
-      setStep(1); // Reset to first step
+      setStep(1); 
+      router.push('/dashboard/my-projects'); // Redirect to user's projects
     } catch (error: any) {
       console.error("Error saving project to Firestore: ", error);
       toast({ title: 'Submission Error', description: `Could not save project: ${error.message}`, variant: 'destructive' });
@@ -184,7 +198,7 @@ export default function UploadPage() {
 
   const currentProgress = step === 1 ? 33 : step === 2 ? 66 : 100;
 
-  if (isLoadingAuth) {
+  if (loadingAuth) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="mx-auto h-12 w-12 text-primary mb-3 animate-spin" />
@@ -193,7 +207,8 @@ export default function UploadPage() {
     );
   }
 
-  if (!currentUser) {
+  if (!user) {
+    // This state should ideally be brief due to the useEffect redirect
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center animate-fade-in-up">
         <Card className="w-full max-w-md shadow-xl p-8">
@@ -203,15 +218,12 @@ export default function UploadPage() {
           </CardHeader>
           <CardContent>
             <p className="text-lg text-muted-foreground">
-              You need to be logged in to share a project.
-            </p>
-            <p className="text-sm mt-2">
-              (Typically, you would log in via the Admin panel or a dedicated Creator login if available.)
+              You need to be logged in to share a project. Redirecting to login...
             </p>
           </CardContent>
-          <CardFooter>
-             <Button className="w-full" onClick={() => { /* Potentially redirect to a login page or open login modal */ toast({title: "Redirecting to login...", description: "Please implement login flow."}) }}>
-                Go to Login (Placeholder)
+           <CardFooter>
+             <Button className="w-full" asChild>
+                <Link href="/login?redirect=/upload">Go to Login</Link>
              </Button>
           </CardFooter>
         </Card>
@@ -219,12 +231,11 @@ export default function UploadPage() {
     );
   }
 
-
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <header className="text-center animate-fade-in-up">
-        <UserCheck className="mx-auto h-10 w-10 text-green-500 mb-2" />
-        <p className="text-sm text-muted-foreground">Logged in as: {currentUser.email}</p>
+        <UserCog className="mx-auto h-10 w-10 text-primary mb-2" />
+        <p className="text-sm text-muted-foreground">Logged in as: {user.displayName || user.email}</p>
         <h1 className="text-4xl font-bold text-primary mb-2 mt-2">Share Your Project</h1>
         <p className="text-lg text-foreground/80">Follow the steps to add your project to the showcase.</p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
@@ -242,7 +253,7 @@ export default function UploadPage() {
            <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2"><ImagePlus className="text-primary w-7 h-7"/>Project Information & Preview Image URL</CardTitle>
-              <CardDescription>Provide the main details for your project and a direct URL to its preview image.</CardDescription>
+              <CardDescription>Provide the main details for your project and a direct URL to its preview image. (Image must be hosted elsewhere).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                <div>
@@ -253,6 +264,7 @@ export default function UploadPage() {
               <div>
                 <Label htmlFor="previewImageUrl">Project Preview Image URL</Label>
                 <Input id="previewImageUrl" {...form.register('previewImageUrl')} placeholder="https://example.com/your-image.png" />
+                <p className="text-xs text-muted-foreground mt-1">Provide a direct link to an already hosted image.</p>
                 {form.formState.errors.previewImageUrl && <p className="text-sm font-medium text-destructive">{form.formState.errors.previewImageUrl.message}</p>}
               </div>
                <div>
@@ -269,7 +281,7 @@ export default function UploadPage() {
                       {CATEGORIES.map(category => (
                         <Label
                           key={category}
-                          htmlFor={`category-${category}`} // Ensure unique id
+                          htmlFor={`category-${category}`} 
                           className={`flex items-center space-x-2 border rounded-md p-3 hover:bg-accent/20 transition-colors cursor-pointer ${field.value === category ? 'border-primary ring-2 ring-primary bg-primary/10' : 'border-border'}`}
                         >
                           <RadioGroupItem value={category} id={`category-${category}`} />
@@ -297,7 +309,7 @@ export default function UploadPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="projectUrl">Project URL (e.g., GitHub, Live Demo)</Label>
+                <Label htmlFor="projectUrl">Project URL (e.g., GitHub, Live Demo, Figma)</Label>
                 <div className="relative">
                   <Input id="projectUrl" {...form.register('projectUrl')} placeholder="https://github.com/yourname/project" className="pl-8" />
                   <ExternalLink className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -326,7 +338,7 @@ export default function UploadPage() {
                 <Label htmlFor="aiPreviewImage" className="flex items-center gap-2 mb-2 font-semibold text-primary">
                     <Sparkles className="h-5 w-5" /> AI Assist: Generate Description & Tags (Optional)
                 </Label>
-                <p className="text-xs text-muted-foreground mb-2">Upload a preview image (screenshot, mockup) if you want AI to help generate a description and tags.</p>
+                <p className="text-xs text-muted-foreground mb-2">Upload a temporary preview image (screenshot, mockup) if you want AI to help generate a description and tags. This image is for AI use only and won't be your project's main preview.</p>
                 <Input
                     id="aiPreviewImage"
                     type="file"
@@ -344,7 +356,7 @@ export default function UploadPage() {
             </CardContent>
              <CardFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={() => setStep(1)}>Back to Project Info</Button>
-                <Button type="button" onClick={() => form.trigger().then(isValid => isValid && setStep(3))}>Next: Confirm & Submit</Button>
+                <Button type="button" onClick={() => form.trigger().then(isValid => { if(isValid) setStep(3); else toast({title: "Validation Error", description: "Please check for errors in the form.", variant: "destructive"}) })}>Next: Confirm & Submit</Button>
              </CardFooter>
           </Card>
         )}
@@ -353,7 +365,7 @@ export default function UploadPage() {
             <Card className="shadow-xl bg-gradient-to-br from-primary/5 to-accent/5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <CardHeader>
                     <CardTitle className="text-2xl flex items-center gap-2"><CheckCircle className="text-green-500 w-7 h-7"/>Confirm & Submit Project</CardTitle>
-                    <CardDescription>Review your project details before finalizing. This will save the project to Firestore.</CardDescription>
+                    <CardDescription>Review your project details before finalizing. This will save the project to Firestore under your account.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                     <h3 className="font-semibold text-lg">Summary:</h3>
@@ -363,18 +375,28 @@ export default function UploadPage() {
                         {form.getValues('previewImageUrl') && 
                             <div className='my-2'>
                                 <p><strong>Preview Image URL:</strong> <Link href={form.getValues('previewImageUrl')!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{form.getValues('previewImageUrl')}</Link></p>
-                                <Image src={form.getValues('previewImageUrl')!} alt="Project preview" width={200} height={150} className="rounded-md shadow-md object-contain max-h-40 mt-1" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                                {/* Display image if URL is valid, otherwise show text or nothing */}
+                                <Image 
+                                  src={form.getValues('previewImageUrl')!} 
+                                  alt="Project preview" 
+                                  width={200} 
+                                  height={150} 
+                                  className="rounded-md shadow-md object-contain max-h-40 mt-1" 
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }}
+                                />
+                                <span className="text-destructive text-xs hidden">Could not load preview image.</span>
                             </div>
                         }
                         {form.getValues('projectUrl') && <p><strong>Project URL:</strong> <Link href={form.getValues('projectUrl')!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{form.getValues('projectUrl')}</Link></p>}
                         {form.getValues('techStack') && <p><strong>Tech Stack:</strong> {form.getValues('techStack')}</p>}
                         {form.getValues('tags') && <p><strong>Tags:</strong> {form.getValues('tags')}</p>}
                         {form.getValues('description') && <p className="mt-2"><strong>Description:</strong><br/><span className="text-muted-foreground whitespace-pre-line line-clamp-4">{form.getValues('description')}</span></p>}
+                        <p><strong>Creator:</strong> {user?.displayName || user?.email}</p>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">
                     <Button type="button" variant="outline" onClick={() => setStep(2)} disabled={isSubmitting}>Edit Details</Button>
-                    <Button type="submit" size="lg" className="pulse-gentle" disabled={isSubmitting}>
+                    <Button type="submit" size="lg" className="pulse-gentle" disabled={isSubmitting || !form.formState.isValid}>
                         {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" /> }
                         {isSubmitting ? 'Submitting...' : 'Submit Project to Firestore'}
                     </Button>
