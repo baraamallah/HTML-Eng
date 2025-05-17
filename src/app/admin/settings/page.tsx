@@ -62,7 +62,7 @@ export default function AdminSettingsPage() {
 
   const fetchAdminData = async () => {
     if (!currentUser) return; 
-    toast({ title: 'Loading Admin Data...', description: 'Fetching from Firestore.' });
+    toast({ title: 'Loading Admin Data...', description: 'Attempting to fetch from Firestore.' });
     try {
       // Fetch Site Settings
       const settingsDocRef = doc(db, 'settings', 'siteConfig');
@@ -73,13 +73,14 @@ export default function AdminSettingsPage() {
         setNavHomeLink(data.navHomeLink || 'Home');
         setNavHomeHref(data.navHomeHref || '/');
         setAboutPageContent(data.aboutPageContent || 'Welcome to DevPortfolio Hub! Customize this text in the admin panel.');
+        toast({ title: 'Site Settings Loaded', description: 'Fetched from Firestore.' });
       } else {
         // Initialize with defaults if not found in Firestore
         setSiteTitle('DevPortfolio Hub');
         setNavHomeLink('Home');
         setNavHomeHref('/');
         setAboutPageContent('Welcome to DevPortfolio Hub! Customize this text in the admin panel.');
-        toast({ title: 'Site settings not found', description: 'Initialized with defaults. Save to create them in Firestore.', variant: 'default' });
+        toast({ title: 'Site Settings Not Found', description: 'Initialized with defaults. Save to create them in Firestore.', variant: 'default' });
       }
 
       // Fetch Creators
@@ -87,6 +88,7 @@ export default function AdminSettingsPage() {
       const creatorsList = creatorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CreatorType));
       if (creatorsList.length > 0) {
         setCreators(creatorsList);
+        toast({ title: 'Creators Loaded', description: 'Fetched from Firestore.' });
       } else {
         setCreators(MOCK_CREATORS); // Fallback to MOCK if Firestore is empty
         toast({ title: 'No Creators in Firestore', description: 'Displaying mock creator data. Add creators to see them here.', variant: 'default' });
@@ -97,17 +99,17 @@ export default function AdminSettingsPage() {
       const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectType));
       if (projectsList.length > 0) {
         setProjects(projectsList.slice(0,10)); // Display a subset for brevity
+        toast({ title: 'Projects Loaded', description: 'Fetched from Firestore.' });
       } else {
         setProjects(MOCK_PROJECTS.slice(0,3)); // Fallback to MOCK if Firestore is empty
         toast({ title: 'No Projects in Firestore', description: 'Displaying mock project data. Projects added via "Share Project" page will appear here once saved to Firestore.', variant: 'default' });
       }
 
-      toast({ title: 'Admin Data Loaded', description: 'Content status reflected from Firestore or defaults.', variant: 'default' });
     } catch (error: any) {
-      console.error("Error fetching admin data: ", error);
-      toast({ title: 'Error Fetching Data', description: `Could not load data from Firestore: ${error.message}. Displaying local mock data.`, variant: 'destructive' });
-      // Fallback to ensure UI is somewhat populated
-      setSiteTitle(siteTitle || 'DevPortfolio Hub (Fallback)');
+      console.error("Error fetching admin data from Firestore: ", error);
+      toast({ title: 'Firestore Error', description: `Could not load data: ${error.message}. Displaying local mock data.`, variant: 'destructive' });
+      // Fallback to ensure UI is somewhat populated if ANY Firestore error occurs
+      setSiteTitle(siteTitle || 'DevPortfolio Hub (Fallback)'); // Keep potentially loaded site title if it was fetched before error
       setNavHomeLink(navHomeLink || 'Home (Fallback)');
       setAboutPageContent(aboutPageContent || 'Fallback about content.');
       setCreators(MOCK_CREATORS); 
@@ -181,9 +183,13 @@ export default function AdminSettingsPage() {
 
     try {
       const docRef = await addDoc(collection(db, 'creators'), creatorData);
-      setCreators(prev => [...prev, { ...creatorData, id: docRef.id }]);
-      toast({ title: 'Creator Added!', description: `${newCreatorName} added to Firestore.`, icon: <UserPlus className="h-5 w-5" /> });
+      // Optimistically update UI or re-fetch
+      setCreators(prev => [...prev.filter(c => c.id !== 'mock_id_placeholder'), { ...creatorData, id: docRef.id }]); // Example: Remove mock if adding real
+      // Or better: call fetchAdminData() again to refresh the list from Firestore
+      // await fetchAdminData(); 
+      toast({ title: 'Creator Added!', description: `${newCreatorName} added to Firestore. List refreshed.`, icon: <UserPlus className="h-5 w-5" /> });
       setNewCreatorName(''); setNewCreatorPhotoUrl(''); setNewCreatorBio(''); setNewCreatorGithub(''); setNewCreatorLinkedIn(''); setNewCreatorWebsite('');
+      await fetchAdminData(); // Refresh data after adding
     } catch (error) {
       console.error("Error adding creator: ", error);
       toast({ title: 'Error Adding Creator', description: 'Could not add creator to Firestore.', variant: 'destructive' });
@@ -222,9 +228,11 @@ export default function AdminSettingsPage() {
       
       await batch.commit();
       
-      setCreators(prev => prev.filter(c => c.id !== creatorId));
-      setProjects(prev => prev.filter(p => p.creatorId !== creatorId));
-      toast({ title: 'Creator Deleted', description: `${creatorName} and their projects have been removed from Firestore.` });
+      // Optimistically update UI or re-fetch
+      // setCreators(prev => prev.filter(c => c.id !== creatorId));
+      // setProjects(prev => prev.filter(p => p.creatorId !== creatorId));
+      await fetchAdminData(); // Refresh data after deleting
+      toast({ title: 'Creator Deleted', description: `${creatorName} and their projects have been removed from Firestore. List refreshed.` });
     } catch (error) {
       console.error("Error deleting creator and their projects: ", error);
       toast({ title: 'Error Deleting Creator', description: 'Could not delete creator and projects from Firestore.', variant: 'destructive' });
@@ -250,8 +258,10 @@ export default function AdminSettingsPage() {
     }
     try {
       await deleteDoc(doc(db, "projects", projectId));
-      setProjects(prev => prev.filter(p => p.id !== projectId));
-      toast({ title: 'Project Deleted', description: `"${projectTitle}" has been removed from Firestore.` });
+      // Optimistically update UI or re-fetch
+      // setProjects(prev => prev.filter(p => p.id !== projectId));
+      await fetchAdminData(); // Refresh data after deleting
+      toast({ title: 'Project Deleted', description: `"${projectTitle}" has been removed from Firestore. List refreshed.` });
     } catch (error) {
       console.error("Error deleting project: ", error);
       toast({ title: 'Error Deleting Project', description: 'Could not delete project from Firestore.', variant: 'destructive' });
@@ -497,4 +507,3 @@ export default function AdminSettingsPage() {
   );
 }
 
-    
