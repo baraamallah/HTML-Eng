@@ -10,13 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import type { Creator as CreatorType, Project as ProjectType } from '@/types';
+import type { Creator as CreatorType, Project as ProjectType, SiteSettings } from '@/types';
 import { Settings, UserPlus, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { auth, db } from '@/lib/firebase'; // Firebase integration
+import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
-import { MOCK_CREATORS, MOCK_PROJECTS } from '@/lib/constants'; // For initial structure if DB is empty
+import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_SITE_SETTINGS } from '@/lib/constants';
 
 
 export default function AdminSettingsPage() {
@@ -25,13 +25,15 @@ export default function AdminSettingsPage() {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Initialize state with MOCK data or sensible defaults
+  const [siteTitle, setSiteTitle] = useState(MOCK_SITE_SETTINGS.siteTitle);
+  const [navHomeLink, setNavHomeLink] = useState(MOCK_SITE_SETTINGS.navHomeLink);
+  const [navHomeHref, setNavHomeHref] = useState(MOCK_SITE_SETTINGS.navHomeHref);
+  const [aboutPageContent, setAboutPageContent] = useState(MOCK_SITE_SETTINGS.aboutPageContent);
   
-  const [siteTitle, setSiteTitle] = useState('DevPortfolio Hub');
-  const [navHomeLink, setNavHomeLink] = useState('Home');
-  const [navHomeHref, setNavHomeHref] = useState('/');
-  const [aboutPageContent, setAboutPageContent] = useState('Default about content for DevPortfolio Hub.');
-  const [creators, setCreators] = useState<CreatorType[]>([]);
-  const [projects, setProjects] = useState<ProjectType[]>([]);
+  const [creators, setCreators] = useState<CreatorType[]>(MOCK_CREATORS);
+  const [projects, setProjects] = useState<ProjectType[]>(MOCK_PROJECTS.slice(0,10));
 
   const [newCreatorName, setNewCreatorName] = useState('');
   const [newCreatorPhotoUrl, setNewCreatorPhotoUrl] = useState('');
@@ -40,80 +42,99 @@ export default function AdminSettingsPage() {
   const [newCreatorLinkedIn, setNewCreatorLinkedIn] = useState('');
   const [newCreatorWebsite, setNewCreatorWebsite] = useState('');
 
-  // Firebase Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setIsLoadingAuth(false);
       if (user) {
-        fetchAdminData();
+        fetchAdminData(user);
       } else {
-        // Clear sensitive data if user logs out
-        setSiteTitle('DevPortfolio Hub');
-        setNavHomeLink('Home');
-        setNavHomeHref('/');
-        setAboutPageContent('Default about content for DevPortfolio Hub.');
-        setCreators([]);
-        setProjects([]);
+        // User is signed out, reset to default/mock values
+        setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
+        setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
+        setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
+        setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
+        setCreators(MOCK_CREATORS);
+        setProjects(MOCK_PROJECTS.slice(0,10));
       }
     });
     return () => unsubscribe();
   }, []);
 
-  const fetchAdminData = async () => {
-    if (!currentUser) return; 
+  const fetchAdminData = async (loggedInUser: User) => {
+    if (!loggedInUser) {
+      toast({ title: 'Authentication Issue', description: 'Cannot fetch data, user not logged in.', variant: 'destructive' });
+      // Ensure mock data is set if somehow called without a user (redundant due to init and logout handler, but safe)
+      setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
+      setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
+      setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
+      setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
+      setCreators(MOCK_CREATORS);
+      setProjects(MOCK_PROJECTS.slice(0,10));
+      return;
+    }
+
     toast({ title: 'Loading Admin Data...', description: 'Attempting to fetch from Firestore.' });
+    let siteSettingsLoaded = false;
+    let creatorsLoadedFromFirestore = false;
+    let projectsLoadedFromFirestore = false;
+
     try {
       // Fetch Site Settings
       const settingsDocRef = doc(db, 'settings', 'siteConfig');
       const settingsDocSnap = await getDoc(settingsDocRef);
       if (settingsDocSnap.exists()) {
-        const data = settingsDocSnap.data();
-        setSiteTitle(data.siteTitle || 'DevPortfolio Hub');
-        setNavHomeLink(data.navHomeLink || 'Home');
-        setNavHomeHref(data.navHomeHref || '/');
-        setAboutPageContent(data.aboutPageContent || 'Welcome to DevPortfolio Hub! Customize this text in the admin panel.');
-        toast({ title: 'Site Settings Loaded', description: 'Fetched from Firestore.' });
+        const data = settingsDocSnap.data() as SiteSettings;
+        setSiteTitle(data.siteTitle || MOCK_SITE_SETTINGS.siteTitle);
+        setNavHomeLink(data.navHomeLink || MOCK_SITE_SETTINGS.navHomeLink);
+        setNavHomeHref(data.navHomeHref || MOCK_SITE_SETTINGS.navHomeHref);
+        setAboutPageContent(data.aboutPageContent || MOCK_SITE_SETTINGS.aboutPageContent);
+        siteSettingsLoaded = true;
       } else {
-        // Initialize with defaults if not found in Firestore
-        setSiteTitle('DevPortfolio Hub');
-        setNavHomeLink('Home');
-        setNavHomeHref('/');
-        setAboutPageContent('Welcome to DevPortfolio Hub! Customize this text in the admin panel.');
-        toast({ title: 'Site Settings Not Found', description: 'Initialized with defaults. Save to create them in Firestore.', variant: 'default' });
+         toast({ title: 'Site Settings Info', description: 'No settings found in Firestore. Displaying local defaults. Save to create.', variant: 'default' });
       }
 
       // Fetch Creators
       const creatorsSnapshot = await getDocs(collection(db, 'creators'));
-      const creatorsList = creatorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CreatorType));
+      const creatorsList = creatorsSnapshot.docs.map(cDoc => ({ id: cDoc.id, ...cDoc.data() } as CreatorType));
       if (creatorsList.length > 0) {
         setCreators(creatorsList);
-        toast({ title: 'Creators Loaded', description: 'Fetched from Firestore.' });
+        creatorsLoadedFromFirestore = true;
       } else {
-        setCreators(MOCK_CREATORS); // Fallback to MOCK if Firestore is empty
-        toast({ title: 'No Creators in Firestore', description: 'Displaying mock creator data. Add creators to see them here.', variant: 'default' });
+         toast({ title: 'Creators Info', description: 'No creators found in Firestore. Displaying local mock creators.', variant: 'default' });
+         setCreators(MOCK_CREATORS); // Ensure mock data is used if Firestore is empty
       }
 
       // Fetch Projects
       const projectsSnapshot = await getDocs(collection(db, 'projects'));
-      const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectType));
+      const projectsList = projectsSnapshot.docs.map(pDoc => ({ id: pDoc.id, ...pDoc.data() } as ProjectType));
       if (projectsList.length > 0) {
         setProjects(projectsList.slice(0,10)); // Display a subset for brevity
-        toast({ title: 'Projects Loaded', description: 'Fetched from Firestore.' });
+        projectsLoadedFromFirestore = true;
       } else {
-        setProjects(MOCK_PROJECTS.slice(0,3)); // Fallback to MOCK if Firestore is empty
-        toast({ title: 'No Projects in Firestore', description: 'Displaying mock project data. Projects added via "Share Project" page will appear here once saved to Firestore.', variant: 'default' });
+        toast({ title: 'Projects Info', description: 'No projects found in Firestore. Displaying local mock projects.', variant: 'default' });
+        setProjects(MOCK_PROJECTS.slice(0,10)); // Ensure mock data is used if Firestore is empty
+      }
+
+      if (siteSettingsLoaded || creatorsLoadedFromFirestore || projectsLoadedFromFirestore) {
+        let loadedItems: string[] = [];
+        if (siteSettingsLoaded) loadedItems.push("site settings");
+        if (creatorsLoadedFromFirestore) loadedItems.push("creators");
+        if (projectsLoadedFromFirestore) loadedItems.push("projects");
+        toast({ title: 'Admin Data Loaded', description: `Fetched ${loadedItems.join(', ')} from Firestore. Others are from local mocks.` });
+      } else {
+        toast({ title: 'Admin Data Source', description: 'Displaying all data from local mocks as Firestore is empty.', variant: 'default' });
       }
 
     } catch (error: any) {
       console.error("Error fetching admin data from Firestore: ", error);
       toast({ title: 'Firestore Error', description: `Could not load data: ${error.message}. Displaying local mock data.`, variant: 'destructive' });
-      // Fallback to ensure UI is somewhat populated if ANY Firestore error occurs
-      setSiteTitle(siteTitle || 'DevPortfolio Hub (Fallback)'); // Keep potentially loaded site title if it was fetched before error
-      setNavHomeLink(navHomeLink || 'Home (Fallback)');
-      setAboutPageContent(aboutPageContent || 'Fallback about content.');
-      setCreators(MOCK_CREATORS); 
-      setProjects(MOCK_PROJECTS.slice(0,3));
+      setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
+      setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
+      setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
+      setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
+      setCreators(MOCK_CREATORS);
+      setProjects(MOCK_PROJECTS.slice(0,10));
     }
   };
   
@@ -145,7 +166,7 @@ export default function AdminSettingsPage() {
       toast({ title: 'Not Authenticated', description: 'Please login to save changes.', variant: 'destructive' });
       return;
     }
-    const settingsPayload = {
+    const settingsPayload: SiteSettings = {
       siteTitle,
       navHomeLink,
       navHomeHref,
@@ -183,13 +204,9 @@ export default function AdminSettingsPage() {
 
     try {
       const docRef = await addDoc(collection(db, 'creators'), creatorData);
-      // Optimistically update UI or re-fetch
-      setCreators(prev => [...prev.filter(c => c.id !== 'mock_id_placeholder'), { ...creatorData, id: docRef.id }]); // Example: Remove mock if adding real
-      // Or better: call fetchAdminData() again to refresh the list from Firestore
-      // await fetchAdminData(); 
-      toast({ title: 'Creator Added!', description: `${newCreatorName} added to Firestore. List refreshed.`, icon: <UserPlus className="h-5 w-5" /> });
+      toast({ title: 'Creator Added!', description: `${newCreatorName} added to Firestore. Refreshing list...`, icon: <UserPlus className="h-5 w-5" /> });
       setNewCreatorName(''); setNewCreatorPhotoUrl(''); setNewCreatorBio(''); setNewCreatorGithub(''); setNewCreatorLinkedIn(''); setNewCreatorWebsite('');
-      await fetchAdminData(); // Refresh data after adding
+      await fetchAdminData(currentUser); // Refresh data after adding
     } catch (error) {
       console.error("Error adding creator: ", error);
       toast({ title: 'Error Adding Creator', description: 'Could not add creator to Firestore.', variant: 'destructive' });
@@ -216,7 +233,6 @@ export default function AdminSettingsPage() {
 
     try {
       const batch = writeBatch(db);
-      
       const creatorDocRef = doc(db, "creators", creatorId);
       batch.delete(creatorDocRef);
       
@@ -227,12 +243,8 @@ export default function AdminSettingsPage() {
       });
       
       await batch.commit();
-      
-      // Optimistically update UI or re-fetch
-      // setCreators(prev => prev.filter(c => c.id !== creatorId));
-      // setProjects(prev => prev.filter(p => p.creatorId !== creatorId));
-      await fetchAdminData(); // Refresh data after deleting
-      toast({ title: 'Creator Deleted', description: `${creatorName} and their projects have been removed from Firestore. List refreshed.` });
+      toast({ title: 'Creator Deleted', description: `${creatorName} and their projects have been removed from Firestore. Refreshing list...` });
+      await fetchAdminData(currentUser); // Refresh data after deleting
     } catch (error) {
       console.error("Error deleting creator and their projects: ", error);
       toast({ title: 'Error Deleting Creator', description: 'Could not delete creator and projects from Firestore.', variant: 'destructive' });
@@ -258,16 +270,13 @@ export default function AdminSettingsPage() {
     }
     try {
       await deleteDoc(doc(db, "projects", projectId));
-      // Optimistically update UI or re-fetch
-      // setProjects(prev => prev.filter(p => p.id !== projectId));
-      await fetchAdminData(); // Refresh data after deleting
-      toast({ title: 'Project Deleted', description: `"${projectTitle}" has been removed from Firestore. List refreshed.` });
+      toast({ title: 'Project Deleted', description: `"${projectTitle}" has been removed from Firestore. Refreshing list...` });
+      await fetchAdminData(currentUser); // Refresh data after deleting
     } catch (error) {
       console.error("Error deleting project: ", error);
       toast({ title: 'Error Deleting Project', description: 'Could not delete project from Firestore.', variant: 'destructive' });
     }
   };
-
 
   if (isLoadingAuth) {
     return (
@@ -333,13 +342,12 @@ export default function AdminSettingsPage() {
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
       
-      <div className="text-center p-4 mb-6 bg-yellow-100 border-2 border-yellow-400 text-yellow-800 rounded-lg shadow-md flex items-center justify-center gap-3">
-        <AlertTriangle className="h-6 w-6 text-yellow-600" />
+      <div className="flex items-center justify-center gap-3 p-4 mb-6 bg-yellow-100 border-2 border-yellow-400 text-yellow-800 rounded-lg shadow-md">
+        <AlertTriangle className="h-6 w-6 text-yellow-600 flex-shrink-0" />
         <p className="text-sm font-medium">
           Important: Ensure your Firestore Security Rules are properly configured for production to protect your data. Start with locked-down rules and grant specific access as needed.
         </p>
       </div>
-
 
       <Accordion type="multiple" defaultValue={['site-config']} className="w-full space-y-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         
@@ -439,7 +447,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                   ) : (
-                    <p className="text-muted-foreground">No creators found in Firestore or mock data. Add one above to see it listed here.</p>
+                    <p className="text-muted-foreground">No creators found. Add one above or check Firestore connection.</p>
                   )}
                 </div>
               </div>
@@ -457,8 +465,8 @@ export default function AdminSettingsPage() {
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
                 <div className="flex items-center gap-2 p-3 mb-4 bg-blue-50 border border-blue-300 rounded-md text-sm text-blue-700">
-                  <Info className="h-5 w-5 text-blue-500" />
-                  <p>Projects are added via the main "Share Project" page (once Firestore integration is complete there). Below you can manage existing projects.</p>
+                  <Info className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                  <p>Projects are added via the main "Share Project" page. Below you can manage existing projects.</p>
                 </div>
                 {projects.length > 0 ? (
                     <ul className="space-y-3">
@@ -484,7 +492,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-muted-foreground">No projects found in Firestore or mock data. Projects added via the "Share Project" page will appear here after being saved to Firestore.</p>
+                     <p className="text-muted-foreground">No projects found. Add some via the "Share Project" page or check Firestore connection.</p>
                   )}
             </AccordionContent>
           </Card>
@@ -506,4 +514,3 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
-
