@@ -1,7 +1,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Code2 } from 'lucide-react'; // Changed from Paintbrush
+import { Code2, Settings } from 'lucide-react'; // Changed from Paintbrush, added Settings
 
 export default function Navbar() {
   return (
@@ -26,6 +26,12 @@ export default function Navbar() {
           </Button>
           <Button variant="default" asChild className="pulse-gentle">
             <Link href="/upload">Share Project</Link>
+          </Button>
+          {/* Admin Settings Link - for prototype access */}
+          <Button variant="outline" asChild>
+            <Link href="/admin/settings" aria-label="Admin Settings">
+              <Settings className="h-4 w-4" />
+            </Link>
           </Button>
         </div>
       </div>
