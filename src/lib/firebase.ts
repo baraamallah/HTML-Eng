@@ -21,51 +21,64 @@ let db: Firestore;
 let storage: FirebaseStorage;
 
 if (typeof window !== 'undefined') { // Ensure Firebase is initialized only on the client-side
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  // More explicit check for missing or empty essential keys
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey.trim() === "" || !firebaseConfig.projectId || firebaseConfig.projectId.trim() === "") {
     console.error(
-      'Firebase API Key or Project ID is missing. Please check your .env.local file and ensure NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set.'
+      "Firebase Initialization Error: API Key or Project ID is missing or empty. \n" +
+      "1. Ensure NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_PROJECT_ID are set in your .env.local file (at the project root). \n" +
+      "2. Verify the values are correct from your Firebase project settings. \n" +
+      "3. Restart your Next.js development server (npm run dev) after changes to .env.local."
     );
   }
 
   if (getApps().length === 0) {
-    if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-      app = initializeApp(firebaseConfig);
+    // Initialize Firebase only if essential keys are present and non-empty
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey.trim() !== "" && firebaseConfig.projectId && firebaseConfig.projectId.trim() !== "") {
+      try {
+        app = initializeApp(firebaseConfig);
+      } catch (e) {
+        console.error("Firebase initializeApp failed:", e);
+        // @ts-ignore
+        app = { name: "mock-initialization-failed-app", options: {}, automaticDataCollectionEnabled: false } as FirebaseApp;
+      }
     } else {
-      // Provide a non-functional mock app if config is missing to prevent hard crashes
+      // @ts-ignore
       app = { name: "mock-missing-config-app", options: {}, automaticDataCollectionEnabled: false } as FirebaseApp;
-      console.warn("Firebase not initialized due to missing configuration. App will not function correctly with Firebase services.");
+      // The error above should already indicate this, but a specific warning here is also fine.
+      console.warn("Firebase not initialized due to missing or empty API Key/Project ID. App will not function correctly with Firebase services.");
     }
   } else {
     app = getApps()[0];
   }
 
-  // Initialize services only if the app was properly initialized (or a valid app already exists)
-  // and not the mock-missing-config-app
-  if (app && app.name !== "mock-missing-config-app") {
+  // Initialize services only if the app was properly initialized
+  // @ts-ignore
+  if (app && app.name !== "mock-missing-config-app" && app.name !== "mock-initialization-failed-app") {
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
   } else {
-    // Provide dummy/mock objects for services if app initialization failed
+    // Fallback to mock objects if Firebase app wasn't properly initialized
+    // These mocks won't function but prevent further crashes if code tries to use them.
     // @ts-ignore
-    auth = {} as Auth;
+    auth = { type: 'auth-mock-client-init-failed' } as Auth;
     // @ts-ignore
-    db = {} as Firestore;
+    db = { type: 'firestore-mock-client-init-failed' } as Firestore;
     // @ts-ignore
-    storage = {} as FirebaseStorage;
+    storage = { type: 'storage-mock-client-init-failed' } as FirebaseStorage;
+    console.warn("Firebase services (auth, db, storage) are using mock objects due to initialization failure.");
   }
 
 } else {
-  // If on the server, provide dummy/mock objects for all exports
-  // to prevent errors if these are imported in server-side code that might not be tree-shaken.
+  // Server-side mocks (to prevent errors if imported in server-side code that might not be tree-shaken)
   // @ts-ignore
   app = { name: "mock-server-app", options: {}, automaticDataCollectionEnabled: false } as FirebaseApp;
   // @ts-ignore
-  auth = {} as Auth;
+  auth = { type: 'auth-mock-server' } as Auth;
   // @ts-ignore
-  db = {} as Firestore;
+  db = { type: 'firestore-mock-server' } as Firestore;
   // @ts-ignore
-  storage = {} as FirebaseStorage;
+  storage = { type: 'storage-mock-server' } as FirebaseStorage;
 }
 
 export { app, auth, db, storage };
