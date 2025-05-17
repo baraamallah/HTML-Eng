@@ -16,17 +16,30 @@ interface ProjectCardProps {
   animationDelay?: string;
 }
 
+const FALLBACK_IMAGE_URL = 'https://placehold.co/300x200.png?text=Preview+Error';
+
 export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const entry = useIntersectionObserver(cardRef, { threshold: 0.1, freezeOnceVisible: false });
   const isObservedVisible = !!entry?.isIntersecting;
 
   const [isMounted, setIsMounted] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState(project.previewImageUrl);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
+  
+  useEffect(() => {
+    // Reset image URL if project prop changes
+    setCurrentImageUrl(project.previewImageUrl);
+  }, [project.previewImageUrl]);
 
   const showAnimation = isMounted && isObservedVisible;
+
+  const handleImageError = () => {
+    setCurrentImageUrl(FALLBACK_IMAGE_URL);
+  };
 
   return (
     <Card
@@ -40,13 +53,14 @@ export function ProjectCard({ project, animationDelay }: ProjectCardProps) {
       <CardHeader className="p-0 relative">
         <Link href={`/gallery?project=${project.id}`}>
             <Image
-              src={project.previewImageUrl}
+              src={currentImageUrl}
               alt={project.title}
               width={300}
               height={200}
               className="w-full object-cover transition-transform duration-300 group-hover:scale-110"
               style={{ minWidth: '300px' }} // Ensure consistent image sizing before load
               data-ai-hint={project.dataAiHint || "project preview"}
+              onError={handleImageError}
             />
         </Link>
         {project.projectUrl && (
