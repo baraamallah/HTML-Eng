@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image'; // Added for logo
 import { Button } from '@/components/ui/button';
 import { Code2, Settings, User, LogOut, LayoutDashboard, UploadCloud, UserPlus } from 'lucide-react';
 import { auth } from '@/lib/firebase';
@@ -19,7 +20,7 @@ export default function Navbar() {
     try {
       await signOut(auth);
       toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
-      router.push('/'); // Redirect to homepage after logout
+      router.push('/'); 
     } catch (e: any) {
       toast({ title: 'Logout Failed', description: e.message, variant: 'destructive' });
     }
@@ -32,14 +33,13 @@ export default function Navbar() {
           <Code2 className="h-8 w-8 text-primary" />
           <h1 className="text-2xl font-bold text-primary">DevPortfolio Hub</h1>
         </Link>
-        <div className="space-x-1 md:space-x-2 flex items-center">
+        <div className="flex items-center space-x-1 md:space-x-2">
           <Button variant="ghost" asChild>
             <Link href="/">Home</Link>
           </Button>
           <Button variant="ghost" asChild>
             <Link href="/gallery">Showcase</Link>
           </Button>
-          {/* Removed Creators link */}
           <Button variant="ghost" asChild>
             <Link href="/about">About</Link>
           </Button>
@@ -76,6 +76,18 @@ export default function Navbar() {
               <Settings className="h-5 w-5" />
             </Link>
           </Button>
+           <Link href="/" passHref aria-label="School Logo - Home">
+            <div className="ml-2 cursor-pointer">
+              <Image
+                src="https://placehold.co/100x40.png?text=Logo" // Replace with your actual logo path in /public
+                alt="School Logo"
+                width={100} 
+                height={40}
+                className="object-contain"
+                data-ai-hint="school logo"
+              />
+            </div>
+          </Link>
         </div>
       </div>
     </nav>

@@ -13,10 +13,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CATEGORIES } from '@/lib/constants';
-import type { Category, Project } from '@/types';
-import { generateProjectDetailsAction } from './actions';
+import type { Category } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Sparkles, Edit3, CheckCircle, ExternalLink, LogIn, AlertCircle, UserCheck, ImagePlus, UserCog } from 'lucide-react';
+import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Edit3, CheckCircle, ExternalLink, LogIn, UserCheck, ImagePlus, UserCog } from 'lucide-react';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { cn } from '@/lib/utils';
 import { auth, db } from '@/lib/firebase';
@@ -24,7 +23,6 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
 
 const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -34,7 +32,6 @@ const projectSchema = z.object({
   previewImageUrl: z.string().url({ message: "Please enter a valid URL for the preview image." }).min(1, "Preview Image URL is required."),
   projectUrl: z.string().url({ message: "Please enter a valid URL (e.g., GitHub, live demo)" }).optional().or(z.literal('')),
   techStack: z.string().optional(), // Comma-separated string for tech stack
-  aiPreviewImage: z.any().optional(), // FileList for AI generation, now optional
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -53,11 +50,8 @@ const CategoryIcon = ({ category, className }: { category: Category, className?:
 
 export default function UploadPage() {
   const { toast } = useToast();
-  const [aiGeneratedPreviewUrl, setAiGeneratedPreviewUrl] = useState<string | null>(null); // For the image used by AI
-  const [isGeneratingAIDetails, setIsGeneratingAIDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const [user, loadingAuth, errorAuth] = useAuthState(auth);
@@ -90,8 +84,7 @@ export default function UploadPage() {
   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
-        const { aiPreviewImage, ...restOfDraft } = value; 
-        localStorage.setItem('uploadFormDraft', JSON.stringify(restOfDraft));
+        localStorage.setItem('uploadFormDraft', JSON.stringify(value));
       } catch (error) {
         console.warn("Could not save draft to localStorage:", error);
       }
@@ -100,7 +93,7 @@ export default function UploadPage() {
   }, [form]);
 
   useEffect(() => {
-    if (user) { // Only load draft if user is logged in
+    if (user) { 
       try {
         const draft = localStorage.getItem('uploadFormDraft');
         if (draft) {
@@ -112,39 +105,6 @@ export default function UploadPage() {
       }
     }
   }, [form, user]);
-
-  const handleAIFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      form.setValue('aiPreviewImage', event.target.files);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAiGeneratedPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setAiGeneratedPreviewUrl(null);
-      form.setValue('aiPreviewImage', undefined);
-    }
-  };
-
-  const handleAIDescription = async () => {
-    if (!aiGeneratedPreviewUrl) {
-      toast({ title: 'Error', description: 'Please upload an image for AI assistance first.', variant: 'destructive' });
-      return;
-    }
-    setIsGeneratingAIDetails(true);
-    try {
-      const result = await generateProjectDetailsAction(aiGeneratedPreviewUrl); 
-      if (result.description) form.setValue('description', result.description);
-      if (result.tags && result.tags.length > 0) form.setValue('tags', result.tags.join(', '));
-      toast({ title: 'AI Assistance', description: 'Description and tags generated!' });
-    } catch (error) {
-      toast({ title: 'AI Error', description: 'Could not generate details. Please try again or write your own.', variant: 'destructive' });
-    } finally {
-      setIsGeneratingAIDetails(false);
-    }
-  };
   
   const onSubmit = async (data: ProjectFormData) => {
     if (!user) {
@@ -158,7 +118,7 @@ export default function UploadPage() {
       return title.toLowerCase().split(' ').slice(0, 2).join(' ') || 'project image';
     };
 
-    const projectData = { // Explicitly type this if Project type is available and matches
+    const projectData = { 
       title: data.title,
       description: data.description || '',
       tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
@@ -168,10 +128,9 @@ export default function UploadPage() {
       techStack: data.techStack ? data.techStack.split(',').map(tech => tech.trim()).filter(tech => tech) : [],
       creatorId: user.uid,
       creatorName: user.displayName || user.email || 'Anonymous Creator',
-      uploadDate: new Date().toISOString(),
+      uploadDate: new Date().toISOString(), 
       isFeatured: false,
       dataAiHint: generateDataAiHint(data.title),
-      // Add serverTimestamp for Firestore for better sorting/querying by creation time
       createdAt: serverTimestamp(),
     };
     
@@ -183,11 +142,9 @@ export default function UploadPage() {
         className: "bg-green-100 border-green-400 text-green-800"
       });
       form.reset();
-      setAiGeneratedPreviewUrl(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
       localStorage.removeItem('uploadFormDraft');
       setStep(1); 
-      router.push('/dashboard/my-projects'); // Redirect to user's projects
+      router.push('/dashboard/my-projects'); 
     } catch (error: any) {
       console.error("Error saving project to Firestore: ", error);
       toast({ title: 'Submission Error', description: `Could not save project: ${error.message}`, variant: 'destructive' });
@@ -208,7 +165,6 @@ export default function UploadPage() {
   }
 
   if (!user) {
-    // This state should ideally be brief due to the useEffect redirect
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center animate-fade-in-up">
         <Card className="w-full max-w-md shadow-xl p-8">
@@ -245,7 +201,7 @@ export default function UploadPage() {
         <div className="w-full bg-muted rounded-full h-2.5">
           <div className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${currentProgress}%` }}></div>
         </div>
-        <p className="text-sm text-center text-muted-foreground mt-2">Step {step} of 3: {step === 1 ? "Project Info & Image URL" : step === 2 ? "Details & AI Assist" : "Confirm & Submit"}</p>
+        <p className="text-sm text-center text-muted-foreground mt-2">Step {step} of 3: {step === 1 ? "Project Info & Image URL" : step === 2 ? "Details" : "Confirm & Submit"}</p>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -305,7 +261,7 @@ export default function UploadPage() {
           <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
              <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2"><Edit3 className="text-primary w-7 h-7"/>Additional Project Details</CardTitle>
-              <CardDescription>Provide more information about your project. Use the AI assistant for help with description and tags from an optional image upload!</CardDescription>
+              <CardDescription>Provide more information about your project: its URL, description, tech stack, and tags.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -318,10 +274,8 @@ export default function UploadPage() {
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <Label htmlFor="description">Description / README (Optional)</Label>
-                </div>
-                <Textarea id="description" {...form.register('description')} rows={4} disabled={isGeneratingAIDetails} placeholder="Describe your project, its features, and purpose. Markdown is supported for READMEs." />
+                <Label htmlFor="description">Description / README (Optional)</Label>
+                <Textarea id="description" {...form.register('description')} rows={4} placeholder="Describe your project, its features, and purpose. Markdown is supported for READMEs." />
               </div>
 
               <div>
@@ -331,28 +285,8 @@ export default function UploadPage() {
 
               <div>
                 <Label htmlFor="tags">Tags (Comma-separated)</Label>
-                <Input id="tags" {...form.register('tags')} disabled={isGeneratingAIDetails} placeholder="E.g., full-stack, ui-design, machine-learning, game-dev" />
+                <Input id="tags" {...form.register('tags')} placeholder="E.g., full-stack, ui-design, machine-learning, game-dev" />
               </div>
-              
-              <Card className="bg-muted/50 p-4">
-                <Label htmlFor="aiPreviewImage" className="flex items-center gap-2 mb-2 font-semibold text-primary">
-                    <Sparkles className="h-5 w-5" /> AI Assist: Generate Description & Tags (Optional)
-                </Label>
-                <p className="text-xs text-muted-foreground mb-2">Upload a temporary preview image (screenshot, mockup) if you want AI to help generate a description and tags. This image is for AI use only and won't be your project's main preview.</p>
-                <Input
-                    id="aiPreviewImage"
-                    type="file"
-                    ref={fileInputRef}
-                    className="mb-2"
-                    accept="image/png, image/jpeg, image/gif"
-                    onChange={handleAIFileChange}
-                />
-                {aiGeneratedPreviewUrl && <Image src={aiGeneratedPreviewUrl} alt="AI preview" width={150} height={100} className="rounded-md shadow-md object-contain max-h-32 my-2" />}
-                <Button type="button" size="sm" variant="outline" onClick={handleAIDescription} disabled={isGeneratingAIDetails || !aiGeneratedPreviewUrl} className="flex items-center gap-1 text-xs">
-                    {isGeneratingAIDetails ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                    Generate with AI
-                </Button>
-              </Card>
             </CardContent>
              <CardFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={() => setStep(1)}>Back to Project Info</Button>
@@ -375,7 +309,6 @@ export default function UploadPage() {
                         {form.getValues('previewImageUrl') && 
                             <div className='my-2'>
                                 <p><strong>Preview Image URL:</strong> <Link href={form.getValues('previewImageUrl')!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{form.getValues('previewImageUrl')}</Link></p>
-                                {/* Display image if URL is valid, otherwise show text or nothing */}
                                 <Image 
                                   src={form.getValues('previewImageUrl')!} 
                                   alt="Project preview" 
