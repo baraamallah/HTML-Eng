@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import type { Creator as CreatorType, Project as ProjectType } from '@/types';
-import { Settings, UserPlus, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle } from 'lucide-react';
+import { Settings, UserPlus, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase'; // Firebase integration
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from 'firebase/auth';
@@ -29,7 +29,7 @@ export default function AdminSettingsPage() {
   const [siteTitle, setSiteTitle] = useState('DevPortfolio Hub');
   const [navHomeLink, setNavHomeLink] = useState('Home');
   const [navHomeHref, setNavHomeHref] = useState('/');
-  const [aboutPageContent, setAboutPageContent] = useState('');
+  const [aboutPageContent, setAboutPageContent] = useState('Default about content for DevPortfolio Hub.');
   const [creators, setCreators] = useState<CreatorType[]>([]);
   const [projects, setProjects] = useState<ProjectType[]>([]);
 
@@ -52,7 +52,7 @@ export default function AdminSettingsPage() {
         setSiteTitle('DevPortfolio Hub');
         setNavHomeLink('Home');
         setNavHomeHref('/');
-        setAboutPageContent('');
+        setAboutPageContent('Default about content for DevPortfolio Hub.');
         setCreators([]);
         setProjects([]);
       }
@@ -61,6 +61,7 @@ export default function AdminSettingsPage() {
   }, []);
 
   const fetchAdminData = async () => {
+    if (!currentUser) return; 
     toast({ title: 'Loading Admin Data...', description: 'Fetching from Firestore.' });
     try {
       // Fetch Site Settings
@@ -71,14 +72,14 @@ export default function AdminSettingsPage() {
         setSiteTitle(data.siteTitle || 'DevPortfolio Hub');
         setNavHomeLink(data.navHomeLink || 'Home');
         setNavHomeHref(data.navHomeHref || '/');
-        setAboutPageContent(data.aboutPageContent || MOCK_CREATORS[0]?.bio || 'Default about content.');
+        setAboutPageContent(data.aboutPageContent || 'Welcome to DevPortfolio Hub! Customize this text in the admin panel.');
       } else {
-        // Initialize with defaults if not found
+        // Initialize with defaults if not found in Firestore
         setSiteTitle('DevPortfolio Hub');
         setNavHomeLink('Home');
         setNavHomeHref('/');
-        setAboutPageContent(MOCK_CREATORS[0]?.bio || 'Default about content from mock.');
-        toast({ title: 'Site settings not found', description: 'Initialized with defaults. Save to create.', variant: 'destructive' });
+        setAboutPageContent('Welcome to DevPortfolio Hub! Customize this text in the admin panel.');
+        toast({ title: 'Site settings not found', description: 'Initialized with defaults. Save to create them in Firestore.', variant: 'destructive' });
       }
 
       // Fetch Creators
@@ -89,18 +90,18 @@ export default function AdminSettingsPage() {
       // Fetch Projects
       const projectsSnapshot = await getDocs(collection(db, 'projects'));
       const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectType));
-      setProjects(projectsList.slice(0,10)); // Display a subset for brevity in admin
+      setProjects(projectsList.slice(0,10)); 
 
       toast({ title: 'Admin Data Loaded', description: 'Content fetched from Firestore.' });
     } catch (error) {
       console.error("Error fetching admin data: ", error);
-      toast({ title: 'Error Fetching Data', description: 'Could not load data from Firestore.', variant: 'destructive' });
-      // Fallback to mock data if fetch fails for some reason, to keep UI usable for demo
-      setSiteTitle('DevPortfolio Hub (Fallback)');
-      setNavHomeLink('Home (Fallback)');
-      setAboutPageContent(MOCK_CREATORS[0]?.bio || 'Fallback about content.');
-      setCreators(MOCK_CREATORS);
-      setProjects(MOCK_PROJECTS.slice(0,3));
+      toast({ title: 'Error Fetching Data', description: 'Could not load data from Firestore. Using local defaults.', variant: 'destructive' });
+      // Fallback to ensure UI is somewhat populated
+      setSiteTitle(siteTitle || 'DevPortfolio Hub (Fallback)');
+      setNavHomeLink(navHomeLink || 'Home (Fallback)');
+      setAboutPageContent(aboutPageContent || 'Fallback about content.');
+      if (creators.length === 0) setCreators(MOCK_CREATORS); 
+      if (projects.length === 0) setProjects(MOCK_PROJECTS.slice(0,3));
     }
   };
   
@@ -113,7 +114,7 @@ export default function AdminSettingsPage() {
       // onAuthStateChanged will handle fetching data
     } catch (error: any) {
       console.error("Login error: ", error);
-      toast({ title: 'Login Failed', description: error.message || 'Invalid credentials.', variant: 'destructive' });
+      toast({ title: 'Login Failed', description: error.message || 'Invalid credentials or Firebase error.', variant: 'destructive' });
       setIsLoadingAuth(false);
     }
   };
@@ -122,8 +123,7 @@ export default function AdminSettingsPage() {
     try {
       await signOut(auth);
       toast({ title: 'Logged Out', description: 'You have been logged out.' });
-    } catch (error: any) {
-      toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
+    } catch (error: any) {      toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -140,10 +140,10 @@ export default function AdminSettingsPage() {
     };
     try {
       await setDoc(doc(db, 'settings', 'siteConfig'), settingsPayload, { merge: true });
-      toast({ title: 'Success', description: 'Site settings saved to Firestore.', icon: <Server className="h-5 w-5" /> });
+      toast({ title: 'Success!', description: 'Site settings saved to Firestore.', icon: <Server className="h-5 w-5" /> });
     } catch (error) {
       console.error("Error saving site settings: ", error);
-      toast({ title: 'Error Saving Settings', description: 'Could not save site settings.', variant: 'destructive' });
+      toast({ title: 'Error Saving Settings', description: 'Could not save site settings to Firestore.', variant: 'destructive' });
     }
   };
 
@@ -154,13 +154,13 @@ export default function AdminSettingsPage() {
     }
     const creatorData: Omit<CreatorType, 'id'> = { 
       name: newCreatorName, 
-      photoUrl: newCreatorPhotoUrl || `https://placehold.co/200x200.png?text=${encodeURIComponent(newCreatorName.split(' ')[0])}`, // Default placeholder
-      dataAiHint: 'creator photo',
+      photoUrl: newCreatorPhotoUrl || `https://placehold.co/200x200.png?text=${encodeURIComponent(newCreatorName.split(' ')[0] || 'Creator')}`, 
+      dataAiHint: 'creator photo', 
       bio: newCreatorBio,
       githubUsername: newCreatorGithub,
       linkedInProfile: newCreatorLinkedIn,
       personalWebsite: newCreatorWebsite,
-      location: 'To be updated', // Default
+      location: 'To be updated', 
     };
 
     if (!creatorData.name) {
@@ -171,7 +171,7 @@ export default function AdminSettingsPage() {
     try {
       const docRef = await addDoc(collection(db, 'creators'), creatorData);
       setCreators(prev => [...prev, { ...creatorData, id: docRef.id }]);
-      toast({ title: 'Creator Added', description: `${newCreatorName} added to Firestore.`, icon: <UserPlus className="h-5 w-5" /> });
+      toast({ title: 'Creator Added!', description: `${newCreatorName} added to Firestore.`, icon: <UserPlus className="h-5 w-5" /> });
       setNewCreatorName(''); setNewCreatorPhotoUrl(''); setNewCreatorBio(''); setNewCreatorGithub(''); setNewCreatorLinkedIn(''); setNewCreatorWebsite('');
     } catch (error) {
       console.error("Error adding creator: ", error);
@@ -180,17 +180,12 @@ export default function AdminSettingsPage() {
   };
 
   const handleEditCreator = (creatorId: string) => {
-    // This would typically open a modal or navigate to an edit page for the creator.
-    // For this step, it's a placeholder.
     const creatorToEdit = creators.find(c => c.id === creatorId);
     toast({
-      title: 'Edit Creator (Conceptual)',
-      description: `To edit ${creatorToEdit?.name}, you'd implement a form and then an updateDoc call to Firestore.`,
+      title: 'Edit Creator (Prototype)',
+      description: `To edit ${creatorToEdit?.name}, implement a form pre-filled with their data, then use 'updateDoc' to save changes to Firestore. This is a prototype action.`,
       icon: <Edit3 className="h-5 w-5" />
     });
-    // Example: You might populate a form with creatorToEdit data here.
-    // Then on form submission, call:
-    // await updateDoc(doc(db, 'creators', creatorId), updatedCreatorData);
   };
 
   const handleDeleteCreator = async (creatorId: string, creatorName: string) => {
@@ -205,11 +200,9 @@ export default function AdminSettingsPage() {
     try {
       const batch = writeBatch(db);
       
-      // Delete the creator document
       const creatorDocRef = doc(db, "creators", creatorId);
       batch.delete(creatorDocRef);
       
-      // Find and delete all projects by this creator
       const projectsQuery = query(collection(db, "projects"), where("creatorId", "==", creatorId));
       const projectsSnapshot = await getDocs(projectsQuery);
       projectsSnapshot.forEach((projectDoc) => {
@@ -219,19 +212,19 @@ export default function AdminSettingsPage() {
       await batch.commit();
       
       setCreators(prev => prev.filter(c => c.id !== creatorId));
-      setProjects(prev => prev.filter(p => p.creatorId !== creatorId)); // Also update local projects state
+      setProjects(prev => prev.filter(p => p.creatorId !== creatorId));
       toast({ title: 'Creator Deleted', description: `${creatorName} and their projects have been removed from Firestore.` });
     } catch (error) {
       console.error("Error deleting creator and their projects: ", error);
-      toast({ title: 'Error Deleting Creator', description: 'Could not delete creator.', variant: 'destructive' });
+      toast({ title: 'Error Deleting Creator', description: 'Could not delete creator and projects from Firestore.', variant: 'destructive' });
     }
   };
 
   const handleEditProject = (projectId: string) => {
     const projectToEdit = projects.find(p => p.id === projectId);
     toast({
-      title: 'Edit Project (Conceptual)',
-      description: `To edit ${projectToEdit?.title}, you'd implement a form and then an updateDoc call to Firestore.`,
+      title: 'Edit Project (Prototype)',
+      description: `To edit ${projectToEdit?.title}, implement a form, then use 'updateDoc' to save changes to Firestore. This is a prototype action.`,
       icon: <Edit3 className="h-5 w-5" />
     });
   };
@@ -250,7 +243,7 @@ export default function AdminSettingsPage() {
       toast({ title: 'Project Deleted', description: `"${projectTitle}" has been removed from Firestore.` });
     } catch (error) {
       console.error("Error deleting project: ", error);
-      toast({ title: 'Error Deleting Project', description: 'Could not delete project.', variant: 'destructive' });
+      toast({ title: 'Error Deleting Project', description: 'Could not delete project from Firestore.', variant: 'destructive' });
     }
   };
 
@@ -319,10 +312,10 @@ export default function AdminSettingsPage() {
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
       
-      <div className="text-center p-3 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-700 rounded-md shadow flex items-center justify-center gap-2">
-        <AlertTriangle className="h-5 w-5" />
-        <p className="text-sm">
-          Firestore Security Rules: Ensure your Firestore rules are properly configured for production to protect your data. Start with locked-down rules and grant access as needed.
+      <div className="text-center p-4 mb-6 bg-yellow-100 border-2 border-yellow-400 text-yellow-800 rounded-lg shadow-md flex items-center justify-center gap-3">
+        <AlertTriangle className="h-6 w-6 text-yellow-600" />
+        <p className="text-sm font-medium">
+          Important: Ensure your Firestore Security Rules are properly configured for production to protect your data. Start with locked-down rules and grant specific access as needed.
         </p>
       </div>
 
@@ -331,8 +324,8 @@ export default function AdminSettingsPage() {
         
         <AccordionItem value="site-config">
           <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline">
-              <div className="flex items-center gap-3 text-left">
+            <AccordionTrigger className="p-6 hover:no-underline text-left">
+              <div className="flex items-center gap-3">
                 <Globe className="w-6 h-6 text-accent" />
                 <h3 className="text-2xl font-semibold text-foreground">Site Configuration</h3>
               </div>
@@ -362,8 +355,8 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="creator-management">
           <Card className="shadow-lg">
-             <AccordionTrigger className="p-6 hover:no-underline">
-              <div className="flex items-center gap-3 text-left">
+             <AccordionTrigger className="p-6 hover:no-underline text-left">
+              <div className="flex items-center gap-3">
                 <UserPlus className="w-6 h-6 text-accent" />
                 <h3 className="text-2xl font-semibold text-foreground">Creator Management</h3>
               </div>
@@ -412,10 +405,10 @@ export default function AdminSettingsPage() {
                     <ul className="space-y-2">
                         {creators.map(creator => (
                         <li key={creator.id} className="flex justify-between items-center p-3 border rounded-md bg-card-foreground/5">
-                            <span>{creator.name} (ID: {creator.id})</span>
+                            <span>{creator.name} (ID: {creator.id.substring(0,6)}...)</span>
                             <div className="space-x-2">
                               <Button variant="outline" size="sm" onClick={() => handleEditCreator(creator.id)}>
-                                  <Edit3 className="mr-2"/>Edit (Conceptual)
+                                  <Edit3 className="mr-2"/>Edit (Prototype)
                               </Button>
                               <Button variant="destructive" size="sm" onClick={() => handleDeleteCreator(creator.id, creator.name)}>
                                   Delete
@@ -425,7 +418,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                   ) : (
-                    <p className="text-muted-foreground">No creators found in Firestore.</p>
+                    <p className="text-muted-foreground">No creators found in Firestore. Add one above!</p>
                   )}
                 </div>
               </div>
@@ -435,26 +428,29 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="project-management">
            <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline">
-              <div className="flex items-center gap-3 text-left">
+            <AccordionTrigger className="p-6 hover:no-underline text-left">
+              <div className="flex items-center gap-3">
                 <ListChecks className="w-6 h-6 text-accent" />
                 <h3 className="text-2xl font-semibold text-foreground">Project Management</h3>
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
-                <p className="text-sm text-muted-foreground mb-4">Edit existing project details. Adding new projects is done via the main "Share Project" page, which would also save to Firestore.</p>
+                <div className="flex items-center gap-2 p-3 mb-4 bg-blue-50 border border-blue-300 rounded-md text-sm text-blue-700">
+                  <Info className="h-5 w-5 text-blue-500" />
+                  <p>Edit existing project details. Adding new projects is done via the main "Share Project" page, which would ideally also save to Firestore (requires further implementation).</p>
+                </div>
                 {projects.length > 0 ? (
                     <ul className="space-y-3">
                         {projects.map(project => ( 
                         <li key={project.id} className="p-3 border rounded-md bg-card-foreground/5 space-y-1">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="font-semibold">{project.title} (ID: {project.id})</p>
-                                    <p className="text-xs text-muted-foreground">By {project.creatorName}</p>
+                                    <p className="font-semibold">{project.title} (ID: {project.id.substring(0,6)}...)</p>
+                                    <p className="text-xs text-muted-foreground">By {project.creatorName} (CreatorID: {project.creatorId.substring(0,6)}...)</p>
                                 </div>
                                 <div className="space-x-2">
                                   <Button variant="outline" size="sm" onClick={() => handleEditProject(project.id)}>
-                                      <Edit3 className="mr-2"/>Edit (Conceptual)
+                                      <Edit3 className="mr-2"/>Edit (Prototype)
                                   </Button>
                                   <Button variant="destructive" size="sm" onClick={() => handleDeleteProject(project.id, project.title)}>
                                       Delete
@@ -467,7 +463,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-muted-foreground">No projects found in Firestore.</p>
+                    <p className="text-muted-foreground">No projects found in Firestore. Projects are typically added via the "Share Project" page (which needs Firestore integration).</p>
                 )}
             </AccordionContent>
           </Card>
@@ -489,3 +485,4 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
+

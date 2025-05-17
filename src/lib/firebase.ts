@@ -11,7 +11,7 @@ const firebaseConfig = {
   authDomain: "devportfolio-hub.firebaseapp.com",
   // databaseURL: "https://devportfolio-hub-default-rtdb.firebaseio.com", // Realtime Database URL, not used by Firestore
   projectId: "devportfolio-hub",
-  storageBucket: "devportfolio-hub.appspot.com", // Corrected typical storage bucket format
+  storageBucket: "devportfolio-hub.firebasestorage.app", // User-provided, ensure this is correct for your project
   messagingSenderId: "834909353622",
   appId: "1:834909353622:web:305f430d3c0698597d74b7",
   measurementId: "G-KDKWHPVWXP" // Optional, typically for Analytics
@@ -22,21 +22,16 @@ let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
 
-if (typeof window !== 'undefined') { // Ensure Firebase is initialized only on the client-side or where window is available
+if (typeof window !== 'undefined') { // Ensure Firebase is initialized only on the client-side
   if (getApps().length === 0) {
     if (firebaseConfig.apiKey && firebaseConfig.projectId) { // Check if essential config values are present
         app = initializeApp(firebaseConfig);
     } else {
-        console.error("Firebase config is missing essential values (apiKey or projectId). Firebase not initialized.");
+        // This case should ideally not be reached if config is hardcoded correctly
+        console.error("Firebase config is missing essential values (apiKey or projectId) in firebase.ts. Firebase not initialized.");
         // Provide dummy objects to prevent app from crashing if Firebase is not initialized
         // @ts-ignore
         app = {}; 
-        // @ts-ignore
-        auth = {};
-        // @ts-ignore
-        db = {};
-        // @ts-ignore
-        storage = {};
     }
   } else {
     app = getApps()[0];
@@ -49,24 +44,25 @@ if (typeof window !== 'undefined') { // Ensure Firebase is initialized only on t
   } else if (!app || !app.name) {
     // Handle the case where app initialization failed but didn't throw earlier
     // This ensures auth, db, storage are defined to prevent runtime errors for "undefined"
-    console.error("Firebase app object is not valid. Ensure Firebase was initialized correctly.");
+    console.error("Firebase app object is not valid in firebase.ts. Ensure Firebase was initialized correctly.");
     // @ts-ignore
-    auth = {};
+    auth = {} as Auth;
     // @ts-ignore
-    db = {};
+    db = {} as Firestore;
     // @ts-ignore
-    storage = {};
+    storage = {} as FirebaseStorage;
   }
 } else {
   // If on the server, provide dummy objects or handle as appropriate
-  // For now, keeping them as potentially undefined on server and relying on client-side usage
+  // For now, keeping them as potentially uninitialized on server and relying on client-side usage for Firebase SDKs.
+  // Server-side Firebase (Admin SDK) would be a different setup.
    // @ts-ignore
-   auth = {}; // Provide dummy/placeholder objects
+   auth = {} as Auth; 
    // @ts-ignore
-   db = {};
+   db = {} as Firestore;
    // @ts-ignore
-   storage = {};
-   console.warn("Firebase SDK intended for client-side, dummy objects provided for server-side rendering context if imported directly.");
+   storage = {} as FirebaseStorage;
+   // console.warn("Firebase client SDKs are intended for client-side. Dummy objects provided if imported server-side.");
 }
 
 export { app, auth, db, storage };
