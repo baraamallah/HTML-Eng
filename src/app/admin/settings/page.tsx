@@ -2,7 +2,7 @@
 // src/app/admin/settings/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,27 +10,29 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import { MOCK_CREATORS, MOCK_PROJECTS } from '@/lib/constants'; // Still used for initial state before "fetching"
 import type { Creator as CreatorType, Project as ProjectType } from '@/types';
-import { Settings, UserPlus, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, ServerOff, Server } from 'lucide-react';
+import { Settings, UserPlus, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { auth, db } from '@/lib/firebase'; // Firebase integration
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from 'firebase/auth';
+import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
+import { MOCK_CREATORS, MOCK_PROJECTS } from '@/lib/constants'; // For initial structure if DB is empty
+
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
-  // State for data that would be fetched from a backend
   const [siteTitle, setSiteTitle] = useState('DevPortfolio Hub');
   const [navHomeLink, setNavHomeLink] = useState('Home');
   const [navHomeHref, setNavHomeHref] = useState('/');
-  const [aboutPageContent, setAboutPageContent] = useState(
-    MOCK_CREATORS[0]?.bio || `At DevPortfolio Hub, we believe in the power of code and design...`
-  );
-  const [creators, setCreators] = useState<CreatorType[]>(MOCK_CREATORS);
-  const [projects, setProjects] = useState<ProjectType[]>(MOCK_PROJECTS.slice(0,3)); // Display a subset for brevity
+  const [aboutPageContent, setAboutPageContent] = useState('');
+  const [creators, setCreators] = useState<CreatorType[]>([]);
+  const [projects, setProjects] = useState<ProjectType[]>([]);
 
-  // Form state for adding a new creator
   const [newCreatorName, setNewCreatorName] = useState('');
   const [newCreatorPhotoUrl, setNewCreatorPhotoUrl] = useState('');
   const [newCreatorBio, setNewCreatorBio] = useState('');
@@ -38,207 +40,308 @@ export default function AdminSettingsPage() {
   const [newCreatorLinkedIn, setNewCreatorLinkedIn] = useState('');
   const [newCreatorWebsite, setNewCreatorWebsite] = useState('');
 
-  // Simulate fetching initial data on mount if authenticated (conceptual)
+  // Firebase Auth Listener
   useEffect(() => {
-    if (isAuthenticated) {
-      // In a real app, you'd fetch this data from your backend API
-      // For now, we'll use mock data as initial state
-      console.log('Conceptual: Fetching initial admin data...');
-      setSiteTitle('DevPortfolio Hub'); // Example: fetched value
-      setNavHomeLink('Home');
-      setNavHomeHref('/');
-      setAboutPageContent(MOCK_CREATORS[0]?.bio || 'Default about content from "server"');
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setIsLoadingAuth(false);
+      if (user) {
+        fetchAdminData();
+      } else {
+        // Clear sensitive data if user logs out
+        setSiteTitle('DevPortfolio Hub');
+        setNavHomeLink('Home');
+        setNavHomeHref('/');
+        setAboutPageContent('');
+        setCreators([]);
+        setProjects([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const fetchAdminData = async () => {
+    toast({ title: 'Loading Admin Data...', description: 'Fetching from Firestore.' });
+    try {
+      // Fetch Site Settings
+      const settingsDocRef = doc(db, 'settings', 'siteConfig');
+      const settingsDocSnap = await getDoc(settingsDocRef);
+      if (settingsDocSnap.exists()) {
+        const data = settingsDocSnap.data();
+        setSiteTitle(data.siteTitle || 'DevPortfolio Hub');
+        setNavHomeLink(data.navHomeLink || 'Home');
+        setNavHomeHref(data.navHomeHref || '/');
+        setAboutPageContent(data.aboutPageContent || MOCK_CREATORS[0]?.bio || 'Default about content.');
+      } else {
+        // Initialize with defaults if not found
+        setSiteTitle('DevPortfolio Hub');
+        setNavHomeLink('Home');
+        setNavHomeHref('/');
+        setAboutPageContent(MOCK_CREATORS[0]?.bio || 'Default about content from mock.');
+        toast({ title: 'Site settings not found', description: 'Initialized with defaults. Save to create.', variant: 'destructive' });
+      }
+
+      // Fetch Creators
+      const creatorsSnapshot = await getDocs(collection(db, 'creators'));
+      const creatorsList = creatorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CreatorType));
+      setCreators(creatorsList);
+
+      // Fetch Projects
+      const projectsSnapshot = await getDocs(collection(db, 'projects'));
+      const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectType));
+      setProjects(projectsList.slice(0,10)); // Display a subset for brevity in admin
+
+      toast({ title: 'Admin Data Loaded', description: 'Content fetched from Firestore.' });
+    } catch (error) {
+      console.error("Error fetching admin data: ", error);
+      toast({ title: 'Error Fetching Data', description: 'Could not load data from Firestore.', variant: 'destructive' });
+      // Fallback to mock data if fetch fails for some reason, to keep UI usable for demo
+      setSiteTitle('DevPortfolio Hub (Fallback)');
+      setNavHomeLink('Home (Fallback)');
+      setAboutPageContent(MOCK_CREATORS[0]?.bio || 'Fallback about content.');
       setCreators(MOCK_CREATORS);
       setProjects(MOCK_PROJECTS.slice(0,3));
-      toast({ title: 'Admin Data Loaded', description: 'Content ready for editing (simulated fetch).' });
     }
-  }, [isAuthenticated, toast]);
-
-  const handleLogin = async () => {
-    // TODO: Implement actual API call to your backend for authentication
-    // const response = await fetch('/api/auth/login', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ password }),
-    // });
-    // if (response.ok) {
-    //   const { token } = await response.json();
-    //   localStorage.setItem('adminToken', token); // Store auth token
-    //   setIsAuthenticated(true);
-    //   setPassword('');
-    //   toast({ title: 'Login Successful', description: 'Welcome, Admin!' });
-    // } else {
-    //   toast({ title: 'Login Failed', description: 'Invalid credentials.', variant: 'destructive' });
-    // }
-
-    // For now, let's simulate a successful login if any password is typed
-    if (password) {
-        setIsAuthenticated(true);
-        setPassword('');
-        toast({ title: 'Login Successful (Prototype)', description: 'Backend auth pending. Welcome, Admin!' });
-    } else {
-        toast({ title: 'Login Failed (Prototype)', description: 'Please enter a password.', variant: 'destructive' });
+  };
+  
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsLoadingAuth(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: 'Login Successful', description: 'Welcome, Admin!' });
+      // onAuthStateChanged will handle fetching data
+    } catch (error: any) {
+      console.error("Login error: ", error);
+      toast({ title: 'Login Failed', description: error.message || 'Invalid credentials.', variant: 'destructive' });
+      setIsLoadingAuth(false);
     }
   };
 
-  const handleLogout = () => {
-    // TODO: Implement actual API call to your backend for logout if needed
-    // localStorage.removeItem('adminToken'); // Clear auth token
-    setIsAuthenticated(false);
-    toast({ title: 'Logged Out', description: 'You have been logged out.' });
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({ title: 'Logged Out', description: 'You have been logged out.' });
+    } catch (error: any) {
+      toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
+    }
   };
 
   const handleSaveChanges = async () => {
+    if (!currentUser) {
+      toast({ title: 'Not Authenticated', description: 'Please login to save changes.', variant: 'destructive' });
+      return;
+    }
     const settingsPayload = {
       siteTitle,
       navHomeLink,
       navHomeHref,
       aboutPageContent,
-      // ... other site-wide settings
     };
-    console.log('Attempting to save changes:', settingsPayload);
-    // TODO: Implement API call to save settings to backend
-    // try {
-    //   const response = await fetch('/api/admin/settings', {
-    //     method: 'POST', // or PUT
-    //     headers: { 
-    //       'Content-Type': 'application/json',
-    //       // 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` 
-    //     },
-    //     body: JSON.stringify(settingsPayload),
-    //   });
-    //   if (response.ok) {
-    //     toast({ title: 'Success', description: 'All changes saved to server.' });
-    //   } else {
-    //     toast({ title: 'Error Saving', description: 'Could not save changes to server.', variant: 'destructive' });
-    //   }
-    // } catch (error) {
-    //   toast({ title: 'Network Error', description: 'Failed to connect to server.', variant: 'destructive' });
-    // }
-    toast({
-      title: 'Save Action Triggered',
-      description: 'Data prepared. Backend implementation needed to save.',
-      className: 'bg-accent text-accent-foreground border-accent',
-      icon: <Server className="h-5 w-5" />
-    });
+    try {
+      await setDoc(doc(db, 'settings', 'siteConfig'), settingsPayload, { merge: true });
+      toast({ title: 'Success', description: 'Site settings saved to Firestore.', icon: <Server className="h-5 w-5" /> });
+    } catch (error) {
+      console.error("Error saving site settings: ", error);
+      toast({ title: 'Error Saving Settings', description: 'Could not save site settings.', variant: 'destructive' });
+    }
   };
 
   const handleAddCreator = async () => {
-    const creatorData = { 
+     if (!currentUser) {
+      toast({ title: 'Not Authenticated', description: 'Please login.', variant: 'destructive' });
+      return;
+    }
+    const creatorData: Omit<CreatorType, 'id'> = { 
       name: newCreatorName, 
-      photoUrl: newCreatorPhotoUrl,
+      photoUrl: newCreatorPhotoUrl || `https://placehold.co/200x200.png?text=${encodeURIComponent(newCreatorName.split(' ')[0])}`, // Default placeholder
+      dataAiHint: 'creator photo',
       bio: newCreatorBio,
       githubUsername: newCreatorGithub,
       linkedInProfile: newCreatorLinkedIn,
       personalWebsite: newCreatorWebsite,
+      location: 'To be updated', // Default
     };
-    console.log('Attempting to add creator:', creatorData);
-    // TODO: Implement API call to add creator to backend
-    // try {
-    //   const response = await fetch('/api/admin/creators', {
-    //     method: 'POST',
-    //     headers: { 
-    //       'Content-Type': 'application/json',
-    //       // 'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
-    //      },
-    //     body: JSON.stringify(creatorData),
-    //   });
-    //   if (response.ok) {
-    //     const newCreatorFromServer = await response.json();
-    //     setCreators(prev => [...prev, newCreatorFromServer]); // Update local state with response from server
-    //     toast({ title: 'Creator Added', description: `${newCreatorName || 'New creator'} added successfully.` });
-    //     setNewCreatorName(''); setNewCreatorPhotoUrl(''); setNewCreatorBio(''); setNewCreatorGithub(''); setNewCreatorLinkedIn(''); setNewCreatorWebsite(''); // Clear form
-    //   } else {
-    //     toast({ title: 'Error Adding Creator', description: 'Could not add creator.', variant: 'destructive' });
-    //   }
-    // } catch (error) {
-    //   toast({ title: 'Network Error', description: 'Failed to connect to server.', variant: 'destructive' });
-    // }
-     toast({
-      title: 'Add Creator Action',
-      description: `${newCreatorName || 'New creator'} data prepared. Backend needed.`,
-      icon: <UserPlus className="h-5 w-5" />
+
+    if (!creatorData.name) {
+      toast({ title: 'Validation Error', description: 'Creator name is required.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const docRef = await addDoc(collection(db, 'creators'), creatorData);
+      setCreators(prev => [...prev, { ...creatorData, id: docRef.id }]);
+      toast({ title: 'Creator Added', description: `${newCreatorName} added to Firestore.`, icon: <UserPlus className="h-5 w-5" /> });
+      setNewCreatorName(''); setNewCreatorPhotoUrl(''); setNewCreatorBio(''); setNewCreatorGithub(''); setNewCreatorLinkedIn(''); setNewCreatorWebsite('');
+    } catch (error) {
+      console.error("Error adding creator: ", error);
+      toast({ title: 'Error Adding Creator', description: 'Could not add creator to Firestore.', variant: 'destructive' });
+    }
+  };
+
+  const handleEditCreator = (creatorId: string) => {
+    // This would typically open a modal or navigate to an edit page for the creator.
+    // For this step, it's a placeholder.
+    const creatorToEdit = creators.find(c => c.id === creatorId);
+    toast({
+      title: 'Edit Creator (Conceptual)',
+      description: `To edit ${creatorToEdit?.name}, you'd implement a form and then an updateDoc call to Firestore.`,
+      icon: <Edit3 className="h-5 w-5" />
     });
-    // For prototype: clear form (actual state update would come from server response)
-    setNewCreatorName(''); setNewCreatorPhotoUrl(''); setNewCreatorBio(''); setNewCreatorGithub(''); setNewCreatorLinkedIn(''); setNewCreatorWebsite('');
+    // Example: You might populate a form with creatorToEdit data here.
+    // Then on form submission, call:
+    // await updateDoc(doc(db, 'creators', creatorId), updatedCreatorData);
+  };
+
+  const handleDeleteCreator = async (creatorId: string, creatorName: string) => {
+    if (!currentUser) {
+      toast({ title: 'Not Authenticated', description: 'Please login.', variant: 'destructive' });
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete creator "${creatorName}" and all their projects? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+      
+      // Delete the creator document
+      const creatorDocRef = doc(db, "creators", creatorId);
+      batch.delete(creatorDocRef);
+      
+      // Find and delete all projects by this creator
+      const projectsQuery = query(collection(db, "projects"), where("creatorId", "==", creatorId));
+      const projectsSnapshot = await getDocs(projectsQuery);
+      projectsSnapshot.forEach((projectDoc) => {
+        batch.delete(projectDoc.ref);
+      });
+      
+      await batch.commit();
+      
+      setCreators(prev => prev.filter(c => c.id !== creatorId));
+      setProjects(prev => prev.filter(p => p.creatorId !== creatorId)); // Also update local projects state
+      toast({ title: 'Creator Deleted', description: `${creatorName} and their projects have been removed from Firestore.` });
+    } catch (error) {
+      console.error("Error deleting creator and their projects: ", error);
+      toast({ title: 'Error Deleting Creator', description: 'Could not delete creator.', variant: 'destructive' });
+    }
+  };
+
+  const handleEditProject = (projectId: string) => {
+    const projectToEdit = projects.find(p => p.id === projectId);
+    toast({
+      title: 'Edit Project (Conceptual)',
+      description: `To edit ${projectToEdit?.title}, you'd implement a form and then an updateDoc call to Firestore.`,
+      icon: <Edit3 className="h-5 w-5" />
+    });
+  };
+
+   const handleDeleteProject = async (projectId: string, projectTitle: string) => {
+    if (!currentUser) {
+      toast({ title: 'Not Authenticated', description: 'Please login.', variant: 'destructive' });
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete project "${projectTitle}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, "projects", projectId));
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      toast({ title: 'Project Deleted', description: `"${projectTitle}" has been removed from Firestore.` });
+    } catch (error) {
+      console.error("Error deleting project: ", error);
+      toast({ title: 'Error Deleting Project', description: 'Could not delete project.', variant: 'destructive' });
+    }
+  };
+
+
+  if (isLoadingAuth) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+        <Settings className="mx-auto h-12 w-12 text-primary mb-3 animate-spin" />
+        <p>Loading Authentication...</p>
+      </div>
+    );
   }
 
-  const handleEditCreator = (creatorName: string) => {
-    // TODO: Implement logic to populate an edit form and then make an API call
-    toast({
-      title: 'Edit Creator Action',
-      description: `Editing for ${creatorName} would send data to backend.`,
-      icon: <Edit3 className="h-5 w-5" />
-    });
-  };
-
-  const handleEditProject = (projectTitle: string) => {
-    // TODO: Implement logic to populate an edit form and then make an API call
-    toast({
-      title: 'Edit Project Action',
-      description: `Editing for ${projectTitle} would send data to backend.`,
-      icon: <Edit3 className="h-5 w-5" />
-    });
-  };
-
-  if (!isAuthenticated) {
+  if (!currentUser) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] animate-fade-in-up">
         <Card className="w-full max-w-md shadow-2xl">
           <CardHeader className="text-center">
             <KeyRound className="mx-auto h-12 w-12 text-primary mb-3" />
-            <CardTitle className="text-2xl">Admin Access Required</CardTitle>
-            <CardDescription>Enter your password to manage site settings.</CardDescription>
+            <CardTitle className="text-2xl">Admin Access</CardTitle>
+            <CardDescription>Login to manage site settings.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="admin-password">Password</Label>
-              <Input 
-                id="admin-password" 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                placeholder="Enter admin password"
-              />
-            </div>
-             {/* Removed "Forgot Password" hint as it's tied to hardcoded prototype password */}
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleLogin} className="w-full">Login</Button>
-          </CardFooter>
+          <form onSubmit={handleLogin}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="admin-email">Email</Label>
+                <Input 
+                  id="admin-email" 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin-password">Password</Label>
+                <Input 
+                  id="admin-password" 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter admin password"
+                  required
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" className="w-full">Login</Button>
+            </CardFooter>
+          </form>
         </Card>
       </div>
     );
   }
 
+  // Logged-in Admin View
   return (
     <div className="space-y-10">
       <header className="text-center animate-fade-in-up">
         <Settings className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold text-primary mb-2">Admin Control Panel</h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
-          Manage your DevPortfolio Hub content. (Backend integration pending for full functionality)
+          Manage your DevPortfolio Hub content. Changes are saved to Firestore.
         </p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
+      
+      <div className="text-center p-3 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-700 rounded-md shadow flex items-center justify-center gap-2">
+        <AlertTriangle className="h-5 w-5" />
+        <p className="text-sm">
+          Firestore Security Rules: Ensure your Firestore rules are properly configured for production to protect your data. Start with locked-down rules and grant access as needed.
+        </p>
+      </div>
+
 
       <Accordion type="multiple" defaultValue={['site-config']} className="w-full space-y-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         
         <AccordionItem value="site-config">
           <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline text-left">
-                <div className="flex items-center gap-3">
-                    <Globe className="w-6 h-6 text-accent" />
-                    <h3 className="text-2xl font-semibold text-foreground">Site Configuration</h3>
-                </div>
+            <AccordionTrigger className="p-6 hover:no-underline">
+              <div className="flex items-center gap-3 text-left">
+                <Globe className="w-6 h-6 text-accent" />
+                <h3 className="text-2xl font-semibold text-foreground">Site Configuration</h3>
+              </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="siteTitle">Site Title</Label>
                   <Input id="siteTitle" value={siteTitle} onChange={(e) => setSiteTitle(e.target.value)} />
-                  <p className="text-xs text-muted-foreground mt-1">This appears in the browser tab and navbar.</p>
                 </div>
                 <div>
                   <Label htmlFor="navHomeLink">Navbar "Home" Link Text</Label>
@@ -248,6 +351,10 @@ export default function AdminSettingsPage() {
                   <Label htmlFor="navHomeHref">Navbar "Home" Link Href</Label>
                   <Input id="navHomeHref" value={navHomeHref} onChange={(e) => setNavHomeHref(e.target.value)} />
                 </div>
+                <div>
+                  <Label htmlFor="aboutPageContent">"About Us" Page - Main Content</Label>
+                  <Textarea id="aboutPageContent" value={aboutPageContent} onChange={(e) => setAboutPageContent(e.target.value)} rows={8} />
+                </div>
               </div>
             </AccordionContent>
           </Card>
@@ -255,11 +362,11 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="creator-management">
           <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline text-left">
-                <div className="flex items-center gap-3">
-                    <UserPlus className="w-6 h-6 text-accent" />
-                    <h3 className="text-2xl font-semibold text-foreground">Creator Management</h3>
-                </div>
+             <AccordionTrigger className="p-6 hover:no-underline">
+              <div className="flex items-center gap-3 text-left">
+                <UserPlus className="w-6 h-6 text-accent" />
+                <h3 className="text-2xl font-semibold text-foreground">Creator Management</h3>
+              </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
               <div className="space-y-6">
@@ -273,14 +380,15 @@ export default function AdminSettingsPage() {
                       <Input id="newCreatorName" value={newCreatorName} onChange={(e) => setNewCreatorName(e.target.value)} placeholder="e.g., Ada Lovelace" />
                     </div>
                     <div>
-                      <Label htmlFor="newCreatorPhotoUrl">Photo URL Path</Label>
-                      <Input id="newCreatorPhotoUrl" value={newCreatorPhotoUrl} onChange={(e) => setNewCreatorPhotoUrl(e.target.value)} placeholder="e.g., /img/creator-new.png (in public/img)" />
+                      <Label htmlFor="newCreatorPhotoUrl">Photo URL Path (Optional)</Label>
+                      <Input id="newCreatorPhotoUrl" value={newCreatorPhotoUrl} onChange={(e) => setNewCreatorPhotoUrl(e.target.value)} placeholder="e.g., /img/creator-new.png or https://..." />
+                       <p className="text-xs text-muted-foreground mt-1">If blank, a placeholder image will be used. Actual image uploads require Firebase Storage setup.</p>
                     </div>
                     <div>
                       <Label htmlFor="newCreatorBio">Bio</Label>
-                      <Textarea id="newCreatorBio" value={newCreatorBio} onChange={(e) => setNewCreatorBio(e.target.value)} placeholder="Brief bio about the creator..." />
+                      <Textarea id="newCreatorBio" value={newCreatorBio} onChange={(e) => setNewCreatorBio(e.target.value)} placeholder="Brief bio..." />
                     </div>
-                     <div>
+                    <div>
                       <Label htmlFor="newCreatorGithub">GitHub Username</Label>
                       <Input id="newCreatorGithub" value={newCreatorGithub} onChange={(e) => setNewCreatorGithub(e.target.value)} placeholder="e.g., ada-dev" />
                     </div>
@@ -294,25 +402,30 @@ export default function AdminSettingsPage() {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button onClick={handleAddCreator}><UserPlus className="mr-2"/>Add Creator</Button>
+                    <Button onClick={handleAddCreator}><UserPlus className="mr-2"/>Add Creator to Firestore</Button>
                   </CardFooter>
                 </Card>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Current Creators (from initial load):</h3>
+                  <h3 className="text-lg font-semibold mb-2">Current Creators:</h3>
                   {creators.length > 0 ? (
                     <ul className="space-y-2">
                         {creators.map(creator => (
                         <li key={creator.id} className="flex justify-between items-center p-3 border rounded-md bg-card-foreground/5">
-                            <span>{creator.name}</span>
-                            <Button variant="outline" size="sm" onClick={() => handleEditCreator(creator.name)}>
-                                <Edit3 className="mr-2"/>Edit
-                            </Button>
+                            <span>{creator.name} (ID: {creator.id})</span>
+                            <div className="space-x-2">
+                              <Button variant="outline" size="sm" onClick={() => handleEditCreator(creator.id)}>
+                                  <Edit3 className="mr-2"/>Edit (Conceptual)
+                              </Button>
+                              <Button variant="destructive" size="sm" onClick={() => handleDeleteCreator(creator.id, creator.name)}>
+                                  Delete
+                              </Button>
+                            </div>
                         </li>
                         ))}
                     </ul>
                   ) : (
-                    <p className="text-muted-foreground">No creators loaded or none exist in the database.</p>
+                    <p className="text-muted-foreground">No creators found in Firestore.</p>
                   )}
                 </div>
               </div>
@@ -322,26 +435,31 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="project-management">
            <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline text-left">
-                <div className="flex items-center gap-3">
-                    <ListChecks className="w-6 h-6 text-accent" />
-                    <h3 className="text-2xl font-semibold text-foreground">Project Management</h3>
-                </div>
+            <AccordionTrigger className="p-6 hover:no-underline">
+              <div className="flex items-center gap-3 text-left">
+                <ListChecks className="w-6 h-6 text-accent" />
+                <h3 className="text-2xl font-semibold text-foreground">Project Management</h3>
+              </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
-                <p className="text-sm text-muted-foreground mb-4">Edit existing project details. Adding new projects is done via the main "Share Project" page which would also save to the backend.</p>
+                <p className="text-sm text-muted-foreground mb-4">Edit existing project details. Adding new projects is done via the main "Share Project" page, which would also save to Firestore.</p>
                 {projects.length > 0 ? (
                     <ul className="space-y-3">
                         {projects.map(project => ( 
                         <li key={project.id} className="p-3 border rounded-md bg-card-foreground/5 space-y-1">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="font-semibold">{project.title}</p>
+                                    <p className="font-semibold">{project.title} (ID: {project.id})</p>
                                     <p className="text-xs text-muted-foreground">By {project.creatorName}</p>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => handleEditProject(project.title)}>
-                                    <Edit3 className="mr-2"/>Edit
-                                </Button>
+                                <div className="space-x-2">
+                                  <Button variant="outline" size="sm" onClick={() => handleEditProject(project.id)}>
+                                      <Edit3 className="mr-2"/>Edit (Conceptual)
+                                  </Button>
+                                  <Button variant="destructive" size="sm" onClick={() => handleDeleteProject(project.id, project.title)}>
+                                      Delete
+                                  </Button>
+                                </div>
                             </div>
                             {project.projectUrl && <p className="text-xs text-muted-foreground truncate">URL: <a href={project.projectUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{project.projectUrl}</a></p>}
                             {project.techStack && project.techStack.length > 0 && <p className="text-xs text-muted-foreground truncate">Tech: {project.techStack.join(', ')}</p>}
@@ -349,49 +467,25 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-muted-foreground">No projects loaded or none exist in the database.</p>
+                    <p className="text-muted-foreground">No projects found in Firestore.</p>
                 )}
             </AccordionContent>
           </Card>
         </AccordionItem>
 
-        <AccordionItem value="page-content">
-          <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline text-left">
-                <div className="flex items-center gap-3">
-                    <Edit3 className="w-6 h-6 text-accent" />
-                    <h3 className="text-2xl font-semibold text-foreground">Page Content Editor</h3>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-6 pt-0">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="aboutPageContent">"About Us" Page - Main Content</Label>
-                  <Textarea id="aboutPageContent" value={aboutPageContent} onChange={(e) => setAboutPageContent(e.target.value)} rows={8} />
-                   <p className="text-xs text-muted-foreground mt-1">This is the main mission statement text on the About page.</p>
-                </div>
-                {/* Add more fields for other editable page content as needed */}
-              </div>
-            </AccordionContent>
-          </Card>
-        </AccordionItem>
       </Accordion>
 
       <div className="text-center mt-10 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
         <div className="space-x-4">
           <Button size="lg" onClick={handleSaveChanges} className="pulse-gentle">
-            <Save className="mr-2"/> Save All Changes
+            <Save className="mr-2"/> Save Site Settings to Firestore
           </Button>
           <Button size="lg" variant="outline" onClick={handleLogout}>
             <LogOut className="mr-2"/> Logout
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground mt-2 flex items-center justify-center gap-1">
-          <ServerOff className="h-4 w-4 text-destructive" /> Backend not connected. Changes are not saved live.
-        </p>
+         <p className="text-sm text-muted-foreground mt-3">Logged in as: {currentUser.email}</p>
       </div>
     </div>
   );
 }
-
-    
