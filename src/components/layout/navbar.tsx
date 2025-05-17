@@ -73,7 +73,6 @@ export default function Navbar() {
             </>
           )}
           
-          {/* Admin Settings Link - conceptually separate */}
           <Button variant="outline" size="icon" asChild>
             <Link href="/admin/settings" aria-label="Admin Settings">
               <Settings className="h-5 w-5" />
