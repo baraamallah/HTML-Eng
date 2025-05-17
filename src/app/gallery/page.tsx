@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ProjectCard } from '@/components/project-card';
 import { CATEGORIES } from '@/lib/constants';
 import type { Project, Category } from '@/types';
@@ -10,8 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid, Loader2, AlertCircle } from 'lucide-react';
-import { db } from '@/lib/firebase'; // Import Firestore instance
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid, Loader2, AlertCircle, ExternalLink, UserCircle } from 'lucide-react';
+import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,7 +38,10 @@ export default function GalleryPage() {
 
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date'>('date'); // Defaulting to 'date', can add more like 'popularity' later
+  const [sortBy, setSortBy] = useState<'date'>('date');
+
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -42,10 +49,7 @@ export default function GalleryPage() {
       setFetchError(null);
       try {
         const projectsRef = collection(db, 'projects');
-        // Order by 'createdAt' if available and a server timestamp, otherwise 'uploadDate'
-        // For this example, let's assume 'createdAt' is a server timestamp or a reliable ISO string.
-        // If 'createdAt' is not consistently set, 'uploadDate' (ISO string) might be safer.
-        const q = query(projectsRef, orderBy('createdAt', 'desc')); // Or orderBy('uploadDate', 'desc')
+        const q = query(projectsRef, orderBy('createdAt', 'desc'));
         
         const querySnapshot = await getDocs(q);
         const fetchedProjects = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
@@ -66,6 +70,16 @@ export default function GalleryPage() {
     fetchProjects();
   }, [toast]);
 
+  const handleViewProjectDetails = (project: Project) => {
+    setSelectedProject(project);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedProject(null);
+  };
+
   const filteredProjects = allProjects.filter(project => {
     const categoryMatch = activeCategory === 'All' || project.category === activeCategory;
     const searchMatch = 
@@ -76,12 +90,10 @@ export default function GalleryPage() {
     return categoryMatch && searchMatch;
   }).sort((a, b) => {
     if (sortBy === 'date') {
-      // Ensure consistent date comparison, assuming 'createdAt' or 'uploadDate' exists
       const dateA = a.createdAt ? new Date(typeof a.createdAt === 'string' ? a.createdAt : (a.createdAt as any).toDate()).getTime() : new Date(a.uploadDate).getTime();
       const dateB = b.createdAt ? new Date(typeof b.createdAt === 'string' ? b.createdAt : (b.createdAt as any).toDate()).getTime() : new Date(b.uploadDate).getTime();
       return dateB - dateA;
     }
-    // Add other sort criteria later if needed
     return 0;
   });
 
@@ -123,7 +135,6 @@ export default function GalleryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="date" className="flex items-center"><CalendarDays className="w-4 h-4 mr-2" />Date Added</SelectItem>
-            {/* Add more sort options here if needed */}
           </SelectContent>
         </Select>
       </div>
@@ -153,6 +164,7 @@ export default function GalleryPage() {
               key={project.id} 
               project={project}
               animationDelay={`${0.4 + index * 0.05}s`}
+              onViewDetails={handleViewProjectDetails}
             />
           ))}
         </div>
@@ -178,6 +190,73 @@ export default function GalleryPage() {
             </Button>
           </CardFooter>
         </Card>
+      )}
+
+      {selectedProject && (
+        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl text-primary">{selectedProject.title}</DialogTitle>
+              <DialogDescription>
+                Category: {selectedProject.category}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="relative w-full aspect-video rounded-md overflow-hidden shadow-lg">
+                <Image
+                  src={selectedProject.previewImageUrl || 'https://placehold.co/800x450.png'}
+                  alt={selectedProject.title}
+                  layout="fill"
+                  objectFit="contain"
+                  data-ai-hint={selectedProject.dataAiHint || "project details"}
+                  onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/800x450.png?text=Preview+Error'; }}
+                />
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-lg mb-1 text-accent">Description</h3>
+                <p className="text-foreground/90 whitespace-pre-line">{selectedProject.description || "No description provided."}</p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-lg mb-1 text-accent">Creator</h3>
+                 <Link href={`/artists/${selectedProject.creatorId}`} className="text-primary hover:underline flex items-center gap-2">
+                    <UserCircle className="w-5 h-5" />
+                    {selectedProject.creatorName}
+                </Link>
+              </div>
+
+              {selectedProject.techStack && selectedProject.techStack.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-1 text-accent">Tech Stack</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProject.techStack.map(tech => <Badge key={tech} variant="secondary">{tech}</Badge>)}
+                  </div>
+                </div>
+              )}
+
+              {selectedProject.tags && selectedProject.tags.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-1 text-accent">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProject.tags.map(tag => <Badge key={tag}>{tag}</Badge>)}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="sm:justify-start gap-2">
+              {selectedProject.projectUrl && (
+                <Button asChild>
+                  <Link href={selectedProject.projectUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    View Project / Source
+                  </Link>
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleCloseDetailModal}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
