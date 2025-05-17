@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_CHALLENGES } from '@/lib/constants';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-// ProjectCard is already using useIntersectionObserver
-import { Award, Target, BrainCircuit } from 'lucide-react';
+import { Award, BrainCircuit } from 'lucide-react';
 import { useRef } from 'react';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { cn } from '@/lib/utils';
+import { ClientDateDisplay } from '@/components/client-date-display'; // Added import
 
 export default function HomePage() {
   const featuredCreator = MOCK_CREATORS.find(creator => creator.id === MOCK_PROJECTS.find(proj => proj.isFeatured)?.creatorId) || MOCK_CREATORS[0];
@@ -71,7 +71,7 @@ export default function HomePage() {
             <div className="md:flex">
               <div className="md:w-1/3 relative">
                 <Image
-                  src={featuredCreator.photoUrl} // Will use placeholder from constants
+                  src={featuredCreator.photoUrl}
                   alt={featuredCreator.name}
                   width={300}
                   height={300}
@@ -89,7 +89,7 @@ export default function HomePage() {
                   <h4 className="font-semibold text-accent mb-2">Featured Project: "{featuredProject.title}"</h4>
                   <Link href={`/gallery?project=${featuredProject.id}`}>
                     <Image 
-                      src={featuredProject.previewImageUrl} // Will use placeholder from constants
+                      src={featuredProject.previewImageUrl}
                       alt={featuredProject.title} 
                       width={200} 
                       height={150} 
@@ -129,7 +129,6 @@ export default function HomePage() {
         <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><BrainCircuit className="w-8 h-8 text-accent"/> Coding & Design Challenges</h2>
         <div className="grid md:grid-cols-2 gap-6">
           {MOCK_CHALLENGES.map((challenge, index) => {
-            // Individual challenge cards will animate based on the parent section's visibility
             return (
             <Card 
               key={challenge.id} 
@@ -137,14 +136,16 @@ export default function HomePage() {
                 "shadow-lg hover:shadow-xl transition-shadow duration-300",
                 isChallengesVisible ? 'animate-fade-in-up' : 'opacity-0' 
               )}
-              style={{ animationDelay: `${0.1 + index * 0.15}s` }} // Stagger based on parent visibility
+              style={{ animationDelay: `${0.1 + index * 0.15}s` }}
             >
               <CardHeader>
                 <CardTitle className="text-2xl text-primary">{challenge.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-foreground/90 line-clamp-3">{challenge.description}</p>
-                <p className="text-sm text-muted-foreground mt-2">Ends: {new Date(challenge.endDate).toLocaleDateString()}</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Ends: <ClientDateDisplay dateString={challenge.endDate} />
+                </p>
               </CardContent>
               <CardFooter>
                 <Button>View Challenge</Button>
