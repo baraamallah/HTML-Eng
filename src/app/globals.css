@@ -9,85 +9,86 @@ body {
 
 @layer base {
   :root {
-    --background: 51 67% 92%; /* Warm Cream - #F4F1DE */
-    --foreground: 235 17% 30%; /* Deep Navy - #3D405B */
+    /* New Palette: Cool Blues, Vibrant Orange/Gold Accent, Clean Neutrals */
+    --background: 220 20% 97%; /* Light Cool Gray */
+    --foreground: 220 15% 25%; /* Dark Cool Gray for text */
 
-    --card: 51 67% 95%; /* Slightly lighter cream for cards */
-    --card-foreground: 235 17% 30%; /* Deep Navy */
+    --card: 220 20% 100%; /* White */
+    --card-foreground: 220 15% 25%;
 
-    --popover: 51 67% 97%; /* Lightest cream for popovers */
-    --popover-foreground: 235 17% 30%; /* Deep Navy */
+    --popover: 220 20% 100%; /* White */
+    --popover-foreground: 220 15% 25%;
 
-    --primary: 15 70% 62%; /* Soft Terracotta - #E07A5F */
-    --primary-foreground: 51 67% 92%; /* Warm Cream for text on primary */
+    --primary: 200 75% 52%; /* Bright Cerulean Blue */
+    --primary-foreground: 210 40% 98%; /* Near White for text on primary */
 
-    --secondary: 151 25% 75%; /* Lighter Sage Green for secondary elements */
-    --secondary-foreground: 235 17% 30%; /* Deep Navy */
+    --secondary: 215 30% 65%; /* Muted Blue/Gray */
+    --secondary-foreground: 220 15% 20%; /* Darker Gray for text on secondary */
 
-    --muted: 51 20% 88%; /* Muted cream */
-    --muted-foreground: 235 10% 45%; /* Muted navy */
+    --muted: 220 15% 90%; /* Lighter muted gray */
+    --muted-foreground: 220 10% 45%; /* Muted text color */
 
-    --accent: 151 25% 60%; /* Sage Green - #81B29A */
-    --accent-foreground: 51 67% 92%; /* Warm Cream for text on accent */
+    --accent: 35 90% 58%; /* Vibrant Orange/Gold */
+    --accent-foreground: 20 40% 98%; /* Near White for text on accent */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 15 20% 80%; /* Light terracotta/cream blend for borders */
-    --input: 15 20% 85%; /* Similar for input backgrounds */
-    --ring: 40 84% 75%; /* Gold - #F2CC8F */
+    --border: 220 15% 88%; /* Light gray border */
+    --input: 220 15% 94%; /* Slightly off-white for input */
+    --ring: 200 75% 58%; /* Primary color for focus rings */
 
     --radius: 0.5rem;
 
-    /* Sidebar variables (though not heavily used in this design, keep for consistency) */
-    --sidebar-background: 51 60% 90%;
-    --sidebar-foreground: 235 17% 30%;
-    --sidebar-primary: 15 70% 62%;
-    --sidebar-primary-foreground: 51 67% 92%;
-    --sidebar-accent: 151 25% 60%;
-    --sidebar-accent-foreground: 51 67% 92%;
-    --sidebar-border: 15 20% 80%;
-    --sidebar-ring: 40 84% 75%;
+    /* Sidebar variables - kept for consistency if sidebar is reintroduced */
+    --sidebar-background: 220 18% 95%;
+    --sidebar-foreground: 220 15% 25%;
+    --sidebar-primary: 200 75% 52%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 35 90% 58%;
+    --sidebar-accent-foreground: 20 40% 98%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 200 75% 58%;
   }
 
   .dark {
-    /* For dark mode, we'll invert and adjust. This is a basic setup. */
-    --background: 235 17% 20%; /* Dark Navy Base */
-    --foreground: 51 67% 92%; /* Warm Cream Text */
+    /* Dark Mode Palette */
+    --background: 220 15% 15%; /* Very Dark Blue/Gray */
+    --foreground: 220 15% 88%; /* Light Gray Text */
 
-    --card: 235 17% 25%;
-    --card-foreground: 51 67% 92%;
+    --card: 220 15% 20%; /* Darker Card */
+    --card-foreground: 220 15% 88%;
 
-    --popover: 235 17% 15%;
-    --popover-foreground: 51 67% 92%;
+    --popover: 220 15% 18%; /* Dark Popover */
+    --popover-foreground: 220 15% 88%;
 
-    --primary: 15 70% 62%; /* Soft Terracotta - keep vibrant */
-    --primary-foreground: 235 17% 10%; /* Darker for text on terracotta */
+    --primary: 200 70% 55%; /* Maintain vibrant primary */
+    --primary-foreground: 220 15% 10%; /* Darker text on primary */
 
-    --secondary: 151 25% 40%; /* Darker Sage */
-    --secondary-foreground: 51 67% 92%;
+    --secondary: 215 25% 45%; /* Darker Muted Blue/Gray */
+    --secondary-foreground: 220 15% 88%;
 
-    --muted: 235 17% 30%;
-    --muted-foreground: 51 30% 70%;
+    --muted: 220 15% 30%;
+    --muted-foreground: 220 10% 65%;
 
-    --accent: 151 25% 60%; /* Sage Green - keep vibrant */
-    --accent-foreground: 235 17% 10%; /* Darker for text on sage */
+    --accent: 35 85% 60%; /* Maintain vibrant accent */
+    --accent-foreground: 220 15% 10%; /* Darker text on accent */
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 15 30% 40%;
-    --input: 235 17% 30%;
-    --ring: 40 84% 75%; /* Gold */
+    --border: 220 15% 35%; /* Darker border */
+    --input: 220 15% 25%; /* Darker input */
+    --ring: 200 70% 55%; /* Primary color for focus rings */
 
-    --sidebar-background: 235 17% 18%;
-    --sidebar-foreground: 51 67% 92%;
-    --sidebar-primary: 15 70% 62%;
-    --sidebar-primary-foreground: 235 17% 10%;
-    --sidebar-accent: 151 25% 60%;
-    --sidebar-accent-foreground: 235 17% 10%;
-    --sidebar-border: 15 30% 40%;
-    --sidebar-ring: 40 84% 75%;
+    --sidebar-background: 220 15% 12%;
+    --sidebar-foreground: 220 15% 88%;
+    --sidebar-primary: 200 70% 55%;
+    --sidebar-primary-foreground: 220 15% 10%;
+    --sidebar-accent: 35 85% 60%;
+    --sidebar-accent-foreground: 220 15% 10%;
+    --sidebar-border: 220 15% 35%;
+    --sidebar-ring: 200 70% 55%;
   }
 }
 

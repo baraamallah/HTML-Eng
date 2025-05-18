@@ -2,21 +2,15 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link'; // Ensured import
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { MOCK_CREATORS, MOCK_PROJECTS } from '@/lib/constants';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
-import { Award, StarOff } from 'lucide-react'; // Removed BrainCircuit
 import { useRef, useState, useEffect } from 'react';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { cn } from '@/lib/utils';
-// import { ClientDateDisplay } from '@/components/client-date-display'; // Removed as MOCK_CHALLENGES is removed
+import { ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
-  const featuredProject = MOCK_PROJECTS.find(proj => proj.isFeatured) || (MOCK_PROJECTS.length > 0 ? MOCK_PROJECTS[0] : null);
-  const featuredCreator = featuredProject ? (MOCK_CREATORS.find(creator => creator.id === featuredProject.creatorId) || (MOCK_CREATORS.length > 0 ? MOCK_CREATORS[0] : null)) : (MOCK_CREATORS.length > 0 ? MOCK_CREATORS[0] : null);
-
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
@@ -27,118 +21,60 @@ export default function HomePage() {
   const isHeroObservedVisible = !!heroEntry?.isIntersecting;
   const showHeroAnimation = isMounted && isHeroObservedVisible;
 
-  const featuredCreatorRef = useRef<HTMLElement>(null);
-  const featuredCreatorEntry = useIntersectionObserver(featuredCreatorRef, { threshold: 0.1, freezeOnceVisible: false });
-  const isFeaturedCreatorObservedVisible = !!featuredCreatorEntry?.isIntersecting;
-  const showFeaturedCreatorAnimation = isMounted && isFeaturedCreatorObservedVisible;
-
   return (
     <div className="space-y-12">
       <section
         ref={heroRef}
         className={cn(
-          "text-center py-12 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg shadow-lg",
+          "text-center py-16 md:py-24 bg-gradient-to-br from-primary/10 to-accent/5 rounded-xl shadow-xl",
           showHeroAnimation ? 'animate-fade-in-up' : 'opacity-0'
         )}
         style={showHeroAnimation ? { animationDelay: '0s' } : { opacity: 0 }}
       >
-        <h1 className="text-5xl font-bold mb-4 text-primary">Welcome to DevPortfolio Hub</h1>
-        <p className="text-xl text-foreground/80 mb-8 max-w-3xl mx-auto">
+        <h1 className="text-5xl md:text-6xl font-bold mb-6 text-primary">Welcome to DevPortfolio Hub</h1>
+        <p className="text-xl md:text-2xl text-foreground/80 mb-10 max-w-3xl mx-auto px-4">
           Showcase your code, share your designs, and connect with a vibrant community of creators. Innovation starts here.
         </p>
-        <Button size="lg" asChild className="pulse-gentle">
-          <Link href="/gallery">Explore Showcase</Link>
+        <Button size="lg" asChild className="pulse-gentle text-lg py-3 px-8">
+          <Link href="/gallery">Explore Showcase <ArrowRight className="ml-2 h-5 w-5" /></Link>
         </Button>
       </section>
 
       <BrushStrokeDivider
         className={cn(
-            "mx-auto h-8 w-40 text-primary/50",
+            "mx-auto h-8 w-48 text-primary/40", // Made wider
             showHeroAnimation ? 'animate-fade-in-up' : 'opacity-0'
         )}
-        style={showHeroAnimation ? { animationDelay: '0.1s' } : { opacity: 0 }}
+        style={showHeroAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
       />
 
-      {featuredCreator && featuredProject ? (
-        <section
-          ref={featuredCreatorRef}
-          id="featured-creator"
-          className={cn(
-            "transition-opacity duration-700 ease-out",
-            showFeaturedCreatorAnimation ? 'animate-fade-in-up opacity-100' : 'opacity-0'
-          )}
-          style={showFeaturedCreatorAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
-        >
-          <h2 className="text-3xl font-semibold mb-6 text-center flex items-center justify-center gap-2"><Award className="w-8 h-8 text-accent" /> Featured Creator & Project</h2>
-          <Card className="overflow-hidden shadow-xl transform hover:scale-101 transition-transform duration-300">
-            <div className="md:flex">
-              <div className="md:w-1/3 relative">
-                <Image
-                  src={featuredCreator.photoUrl || `https://placehold.co/300x300.png?text=${encodeURIComponent(featuredCreator.name.split(' ')[0])}`}
-                  alt={featuredCreator.name}
-                  width={300}
-                  height={300}
-                  className="object-cover w-full h-full"
-                  data-ai-hint={featuredCreator.dataAiHint || "developer portrait"}
-                />
-              </div>
-              <div className="md:w-2/3">
-                <CardHeader>
-                  <CardTitle className="text-3xl text-primary">{featuredCreator.name}</CardTitle>
-                  <CardDescription>{featuredCreator.location}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-4 text-foreground/90 line-clamp-3">{featuredCreator.bio}</p>
-                  <h4 className="font-semibold text-accent mb-2">Featured Project: "{featuredProject.title}"</h4>
-                  <Link href={`/gallery?project=${featuredProject.id}`}>
-                    <Image
-                      src={featuredProject.previewImageUrl || `https://placehold.co/200x150.png?text=${encodeURIComponent(featuredProject.title)}`}
-                      alt={featuredProject.title}
-                      width={200}
-                      height={150}
-                      className="rounded-md shadow-md hover:opacity-80 transition-opacity"
-                      data-ai-hint={featuredProject.dataAiHint || "project preview"}
-                    />
-                  </Link>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" asChild>
-                    <Link href={`/artists/${featuredCreator.id}`}>View Profile</Link>
-                  </Button>
-                </CardFooter>
-              </div>
-            </div>
-          </Card>
-        </section>
-      ) : (
-         <section
-          ref={featuredCreatorRef}
-          id="featured-creator-empty"
-          className={cn(
-            "text-center py-8 transition-opacity duration-700 ease-out",
-            showFeaturedCreatorAnimation ? 'animate-fade-in-up opacity-100' : 'opacity-0'
-          )}
-          style={showFeaturedCreatorAnimation ? { animationDelay: '0.2s' } : { opacity: 0 }}
-        >
-          <Card className="p-6 shadow-lg bg-muted/50">
-            <StarOff className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold text-primary mb-2">No Featured Content Yet</h2>
-            <p className="text-foreground/80">
-              Check back soon for featured creators and projects, or explore the showcase!
-            </p>
-          </Card>
-        </section>
-      )}
-
-      <BrushStrokeDivider
+      {/* Featured Creator & Project Section Removed */}
+      
+      <section 
         className={cn(
-          "mx-auto h-8 w-40 text-primary/50",
-           showFeaturedCreatorAnimation ? 'animate-fade-in-up' : 'opacity-0'
+          "py-12 animate-fade-in-up",
+           isMounted ? 'opacity-100' : 'opacity-0' // Apply animation based on mount for this static section
         )}
-        style={showFeaturedCreatorAnimation ? { animationDelay: '0.1s' } : { opacity: 0 }}
-      />
+        style={{ animationDelay: '0.4s' }}
+      >
+        <div className="text-center max-w-3xl mx-auto">
+          <h2 className="text-4xl font-semibold text-primary mb-4">Your Platform to Shine</h2>
+          <p className="text-lg text-foreground/70 mb-8">
+            DevPortfolio Hub is designed to empower developers and designers by providing a dedicated space to exhibit their finest work,
+            discover inspiring projects, and engage with a supportive community. Whether you're a seasoned professional or just starting your journey,
+            this is where your creations get the spotlight they deserve.
+          </p>
+          <div className="flex justify-center gap-4">
+            <Button variant="outline" size="lg" asChild>
+              <Link href="/about">Learn More About Us</Link>
+            </Button>
+            <Button size="lg" asChild>
+              <Link href="/upload">Share Your Project</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
 
-      {/* Coding & Design Challenges Section Removed */}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import type { Creator as CreatorType, Project as ProjectType, SiteSettings } from '@/types';
-import { Settings, UserCog, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle, Info, XCircle, UserPlus, Trash2, ShieldCheck, Loader2 } from 'lucide-react';
+import { Settings, UserCog, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle, Info, XCircle, UserPlus, Trash2, ShieldCheck, Loader2, Heart } from 'lucide-react'; // Added Heart
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { signOut, onAuthStateChanged, type User } from 'firebase/auth';
@@ -19,7 +19,6 @@ import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc,
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_SITE_SETTINGS } from '@/lib/constants';
 import Link from 'next/link';
 
-// !!! IMPORTANT: This is the Admin Firebase User ID !!!
 const ADMIN_UID = "Jiz18K1A6xewOuEnSGPb1ybZkUF3"; 
 
 export default function AdminSettingsPage() {
@@ -28,15 +27,16 @@ export default function AdminSettingsPage() {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Initialize state with mock data as a baseline
   const [siteTitle, setSiteTitle] = useState(MOCK_SITE_SETTINGS.siteTitle);
   const [navHomeLink, setNavHomeLink] = useState(MOCK_SITE_SETTINGS.navHomeLink);
   const [navHomeHref, setNavHomeHref] = useState(MOCK_SITE_SETTINGS.navHomeHref);
   const [aboutPageContent, setAboutPageContent] = useState(MOCK_SITE_SETTINGS.aboutPageContent);
   
   const [creators, setCreators] = useState<CreatorType[]>(MOCK_CREATORS);
-  const [projects, setProjects] = useState<ProjectType[]>(MOCK_PROJECTS.slice(0,10));
+  const [projects, setProjects] = useState<ProjectType[]>(MOCK_PROJECTS); // Show all mock projects initially
 
-  const [creatorForm, setCreatorForm] = useState({
+  const [creatorForm, setCreatorForm] = useState<Partial<CreatorType>>({
     name: '',
     photoUrl: '',
     bio: '',
@@ -61,13 +61,13 @@ export default function AdminSettingsPage() {
         }
       } else {
         setIsAdmin(false);
-        // Reset to default/mock values if user logs out or is not admin
+        // Reset to mock values if user logs out or is not admin
         setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
         setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
         setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
         setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
         setCreators(MOCK_CREATORS);
-        setProjects(MOCK_PROJECTS.slice(0,10));
+        setProjects(MOCK_PROJECTS);
         clearCreatorForm();
         setIsEditingCreator(false);
         setEditingCreatorId(null);
@@ -85,7 +85,7 @@ export default function AdminSettingsPage() {
       setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
       setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
       setCreators(MOCK_CREATORS);
-      setProjects(MOCK_PROJECTS.slice(0,10));
+      setProjects(MOCK_PROJECTS);
       return;
     }
 
@@ -93,9 +93,7 @@ export default function AdminSettingsPage() {
     let siteSettingsLoaded = false;
     let creatorsLoadedFromFirestore = false;
     let projectsLoadedFromFirestore = false;
-    let fetchedCreatorsList: CreatorType[] = MOCK_CREATORS; // Initialize with mock as fallback
-    let fetchedProjectsList: ProjectType[] = MOCK_PROJECTS.slice(0,10); // Initialize with mock
-
+    
     try {
       // Fetch Site Settings
       const settingsDocRef = doc(db, 'settings', 'siteConfig');
@@ -109,10 +107,7 @@ export default function AdminSettingsPage() {
         siteSettingsLoaded = true;
       } else {
          toast({ title: 'Site Settings Info', description: 'No settings found in Firestore. Displaying local defaults. Save to create.', variant: 'default' });
-         setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
-         setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
-         setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
-         setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
+         // Keep mock data already set in state
       }
 
       // Fetch Creators
@@ -120,7 +115,6 @@ export default function AdminSettingsPage() {
       const firestoreCreators = creatorsSnapshot.docs.map(cDoc => ({ id: cDoc.id, ...cDoc.data() } as CreatorType));
       if (firestoreCreators.length > 0) {
         setCreators(firestoreCreators);
-        fetchedCreatorsList = firestoreCreators;
         creatorsLoadedFromFirestore = true;
       } else {
          setCreators(MOCK_CREATORS); // Fallback to mock if Firestore is empty
@@ -135,11 +129,10 @@ export default function AdminSettingsPage() {
       const projectsSnapshot = await getDocs(collection(db, 'projects'));
       const firestoreProjects = projectsSnapshot.docs.map(pDoc => ({ id: pDoc.id, ...pDoc.data() } as ProjectType));
       if (firestoreProjects.length > 0) {
-        setProjects(firestoreProjects.slice(0,10)); 
-        fetchedProjectsList = firestoreProjects.slice(0,10);
+        setProjects(firestoreProjects); 
         projectsLoadedFromFirestore = true;
       } else {
-        setProjects(MOCK_PROJECTS.slice(0,10)); // Fallback to mock
+        setProjects(MOCK_PROJECTS); // Fallback to mock
         if (MOCK_PROJECTS.length > 0) {
           toast({ title: 'Projects Info', description: 'No projects found in Firestore. Displaying local mock projects.', variant: 'default' });
         } else {
@@ -156,28 +149,24 @@ export default function AdminSettingsPage() {
       if (!creatorsLoadedFromFirestore && MOCK_CREATORS.length > 0) fallbackItems.push("creators");
       if (!projectsLoadedFromFirestore && MOCK_PROJECTS.length > 0) fallbackItems.push("projects");
 
-      let description = `Data loaded.`;
-      if (loadedItems.length > 0) {
-        description += ` Fetched ${loadedItems.join(', ')} from Firestore.`;
-      }
-      if (fallbackItems.length > 0) {
-        description += ` Using local mocks for ${fallbackItems.join(', ')}.`;
-      }
+      let description = `Admin data load status:`;
+      if (loadedItems.length > 0) description += ` Fetched ${loadedItems.join(', ')} from Firestore.`;
+      if (fallbackItems.length > 0) description += ` Using local mocks for ${fallbackItems.join(', ')}.`;
       if (loadedItems.length === 0 && fallbackItems.length === 0 && !siteSettingsLoaded){
         description = 'Displaying default values as Firestore and local mocks are empty for some items.';
       }
-       toast({ title: 'Admin Data Status', description: description.trim() });
-
+      toast({ title: 'Admin Data Status', description: description.trim(), duration: 7000 });
 
     } catch (error: any) {
       console.error("Error fetching admin data from Firestore: ", error);
       toast({ title: 'Firestore Error', description: `Could not load data: ${error.message}. Displaying local mock data.`, variant: 'destructive' });
+      // Ensure mock data is set on error
       setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
       setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
       setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
       setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
       setCreators(MOCK_CREATORS);
-      setProjects(MOCK_PROJECTS.slice(0,10));
+      setProjects(MOCK_PROJECTS);
     }
   };
   
@@ -186,10 +175,9 @@ export default function AdminSettingsPage() {
     try {
       await signOut(auth);
       toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
-      // onAuthStateChanged will handle resetting state and isAdmin flag
     } catch (error: any) {      
       toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
-      setIsLoadingAuth(false); // Ensure loading state is reset on error
+      setIsLoadingAuth(false);
     }
   };
 
@@ -235,25 +223,25 @@ export default function AdminSettingsPage() {
       return;
     }
     
-    const creatorData = { 
-      name: creatorForm.name, 
-      photoUrl: creatorForm.photoUrl || `https://placehold.co/200x200.png?text=${encodeURIComponent(creatorForm.name.split(' ')[0] || 'Creator')}`, 
-      dataAiHint: 'creator photo',
-      bio: creatorForm.bio,
-      githubUsername: creatorForm.githubUsername,
-      linkedInProfile: creatorForm.linkedInProfile,
-      personalWebsite: creatorForm.personalWebsite,
-      location: creatorForm.location, 
+    const creatorDataToUpdate = { 
+      name: creatorForm.name || '', 
+      photoUrl: creatorForm.photoUrl || `https://placehold.co/200x200.png?text=${encodeURIComponent(creatorForm.name?.split(' ')[0] || 'User')}`, 
+      dataAiHint: creatorForm.name ? (creatorForm.name.toLowerCase().split(' ').slice(0,2).join(' ') || "creator photo") : "creator photo",
+      bio: creatorForm.bio || '',
+      githubUsername: creatorForm.githubUsername || '',
+      linkedInProfile: creatorForm.linkedInProfile || '',
+      personalWebsite: creatorForm.personalWebsite || '',
+      location: creatorForm.location || '', 
     };
 
-    if (!creatorData.name) {
+    if (!creatorDataToUpdate.name) {
       toast({ title: 'Validation Error', description: 'Creator name is required.', variant: 'destructive' });
       return;
     }
 
     try {
       const creatorDocRef = doc(db, 'creators', editingCreatorId);
-      await updateDoc(creatorDocRef, creatorData);
+      await updateDoc(creatorDocRef, creatorDataToUpdate);
       toast({ title: 'Creator Updated!', description: `${creatorForm.name} updated in Firestore. Refreshing list...`, icon: <Edit3 className="h-5 w-5" /> });
       
       clearCreatorForm();
@@ -373,7 +361,7 @@ export default function AdminSettingsPage() {
               <Link href="/login?redirect=/admin/settings">Go to Login</Link>
             </Button>
              <p className="text-xs text-muted-foreground mt-4">
-              Ensure you are logged in with the Firebase user account designated as admin (UID: {ADMIN_UID === "YOUR_ADMIN_FIREBASE_UID_HERE" ? "Please set in code" : ADMIN_UID.substring(0,10)+'...'})
+              Ensure you are logged in with the Firebase user account designated as admin (UID: {ADMIN_UID.substring(0,10)+'...'})
             </p>
           </CardContent>
         </Card>
@@ -405,7 +393,6 @@ export default function AdminSettingsPage() {
     );
   }
 
-  // Logged-in Admin View
   return (
     <div className="space-y-10">
       <header className="text-center animate-fade-in-up">
@@ -416,15 +403,14 @@ export default function AdminSettingsPage() {
         </p>
         <p className="text-sm text-muted-foreground mt-1">
             Admin: {currentUser.email} (UID: {currentUser.uid.substring(0,10)}...)
-            {ADMIN_UID === "YOUR_ADMIN_FIREBASE_UID_HERE" && <span className="text-destructive font-bold ml-2"> (Warning: Default ADMIN_UID is set in code!)</span>}
         </p>
         <BrushStrokeDivider className="mx-auto mt-4 h-6 w-32 text-primary/50" />
       </header>
       
-      <div className="flex items-start justify-center gap-3 p-4 mb-6 bg-yellow-100 border-2 border-yellow-400 text-yellow-700 rounded-lg shadow-md animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-        <AlertTriangle className="h-8 w-8 md:h-6 md:w-6 text-yellow-600 flex-shrink-0 mt-1" />
+      <div className="flex items-start justify-center gap-3 p-4 mb-6 bg-accent/10 border-2 border-accent text-accent-foreground rounded-lg shadow-md animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <AlertTriangle className="h-8 w-8 md:h-6 md:w-6 text-accent flex-shrink-0 mt-1" />
         <p className="text-sm font-medium">
-          Important: Ensure your Firestore Security Rules are properly configured for production to protect your data. Only the admin UID ({ADMIN_UID === "YOUR_ADMIN_FIREBASE_UID_HERE" ? "Not Set!" : ADMIN_UID.substring(0,10)+'...'}) should have write access to these settings.
+          Important: Ensure your Firestore Security Rules are properly configured for production to protect your data. Only the admin UID ({ADMIN_UID.substring(0,10)+'...'}) should have write access to these settings and management collections.
         </p>
       </div>
 
@@ -432,9 +418,9 @@ export default function AdminSettingsPage() {
         
         <AccordionItem value="site-config">
           <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline">
+            <AccordionTrigger className="p-6 hover:no-underline text-left">
                 <div className="flex items-center gap-3">
-                    <Globe className="w-6 h-6 text-accent" />
+                    <Globe className="w-7 h-7 text-accent" />
                     <h3 className="text-2xl font-semibold text-foreground">Site Configuration</h3>
                 </div>
             </AccordionTrigger>
@@ -463,49 +449,49 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="creator-management">
           <Card className="shadow-lg">
-             <AccordionTrigger className="p-6 hover:no-underline">
+             <AccordionTrigger className="p-6 hover:no-underline text-left">
               <div className="flex items-center gap-3">
-                <UserCog className="w-6 h-6 text-accent" />
+                <UserCog className="w-7 h-7 text-accent" />
                 <h3 className="text-2xl font-semibold text-foreground">Creator Management</h3>
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
               <div className="space-y-6">
                 {isEditingCreator && editingCreatorId ? (
-                  <Card>
+                  <Card className="border-primary border-2">
                     <CardHeader>
-                      <CardTitle className="text-xl">Edit Creator Details</CardTitle>
-                      <CardDescription>Modify the details for {creatorForm.name || 'the selected creator'}.</CardDescription>
+                      <CardTitle className="text-xl">Edit Creator: {creatorForm.name || 'Selected Creator'}</CardTitle>
+                      <CardDescription>Modify the details for this creator.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
                         <Label htmlFor="name">Creator Name</Label>
-                        <Input id="name" value={creatorForm.name} onChange={handleCreatorFormChange} placeholder="e.g., Ada Lovelace" />
+                        <Input id="name" value={creatorForm.name || ''} onChange={handleCreatorFormChange} placeholder="e.g., Ada Lovelace" />
                       </div>
                       <div>
                         <Label htmlFor="location">Location</Label>
-                        <Input id="location" value={creatorForm.location} onChange={handleCreatorFormChange} placeholder="e.g., London, UK" />
+                        <Input id="location" value={creatorForm.location || ''} onChange={handleCreatorFormChange} placeholder="e.g., London, UK" />
                       </div>
                       <div>
-                        <Label htmlFor="photoUrl">Photo URL Path (Optional)</Label>
-                        <Input id="photoUrl" value={creatorForm.photoUrl} onChange={handleCreatorFormChange} placeholder="e.g., /img/creator-new.png or https://..." />
-                        <p className="text-xs text-muted-foreground mt-1">If blank, a placeholder image will be used. Actual image uploads require Firebase Storage setup.</p>
+                        <Label htmlFor="photoUrl">Photo URL Path</Label>
+                        <Input id="photoUrl" value={creatorForm.photoUrl || ''} onChange={handleCreatorFormChange} placeholder="e.g., /img/creator-new.png or https://..." />
+                        <p className="text-xs text-muted-foreground mt-1">If blank, a placeholder image will be used. Direct image uploads require Firebase Storage setup.</p>
                       </div>
                       <div>
                         <Label htmlFor="bio">Bio</Label>
-                        <Textarea id="bio" value={creatorForm.bio} onChange={handleCreatorFormChange} placeholder="Brief bio..." />
+                        <Textarea id="bio" value={creatorForm.bio || ''} onChange={handleCreatorFormChange} placeholder="Brief bio..." />
                       </div>
                       <div>
                         <Label htmlFor="githubUsername">GitHub Username</Label>
-                        <Input id="githubUsername" value={creatorForm.githubUsername} onChange={handleCreatorFormChange} placeholder="e.g., ada-dev" />
+                        <Input id="githubUsername" value={creatorForm.githubUsername || ''} onChange={handleCreatorFormChange} placeholder="e.g., ada-dev" />
                       </div>
                       <div>
                         <Label htmlFor="linkedInProfile">LinkedIn Profile URL</Label>
-                        <Input id="linkedInProfile" value={creatorForm.linkedInProfile} onChange={handleCreatorFormChange} placeholder="https://linkedin.com/in/ada-dev" />
+                        <Input id="linkedInProfile" value={creatorForm.linkedInProfile || ''} onChange={handleCreatorFormChange} placeholder="https://linkedin.com/in/ada-dev" />
                       </div>
                       <div>
                         <Label htmlFor="personalWebsite">Personal Website URL</Label>
-                        <Input id="personalWebsite" value={creatorForm.personalWebsite} onChange={handleCreatorFormChange} placeholder="https://ada.dev" />
+                        <Input id="personalWebsite" value={creatorForm.personalWebsite || ''} onChange={handleCreatorFormChange} placeholder="https://ada.dev" />
                       </div>
                     </CardContent>
                     <CardFooter className="flex gap-2">
@@ -531,13 +517,13 @@ export default function AdminSettingsPage() {
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Current Creators ({creators.length}):</h3>
                   {creators.length > 0 ? (
-                    <ul className="space-y-2 max-h-96 overflow-y-auto p-1 border rounded-md">
+                    <ul className="space-y-2 max-h-96 overflow-y-auto p-1 border rounded-md bg-background">
                         {creators.map(creator => (
-                        <li key={creator.id} className="flex justify-between items-center p-3 border rounded-md bg-card-foreground/5 hover:bg-card-foreground/10">
+                        <li key={creator.id} className="flex justify-between items-center p-3 border rounded-md bg-card hover:bg-accent/5 transition-shadow">
                             <div>
-                                <span className="font-medium">{creator.name}</span>
+                                <span className="font-medium text-primary">{creator.name}</span>
                                 <span className="text-xs text-muted-foreground ml-2">(ID: {creator.id.substring(0,6)}...)</span>
-                                <p className="text-xs text-muted-foreground">{creator.location}</p>
+                                <p className="text-sm text-muted-foreground">{creator.location || 'No location set'}</p>
                             </div>
                             <div className="space-x-2">
                               <Button variant="outline" size="sm" onClick={() => handleEditCreator(creator.id)}>
@@ -551,7 +537,7 @@ export default function AdminSettingsPage() {
                         ))}
                     </ul>
                   ) : (
-                     <p className="text-muted-foreground">No creators found in Firestore. Users can sign up to create their profiles, or check mock data if Firestore is empty.</p>
+                     <p className="text-muted-foreground p-4 text-center bg-muted/50 rounded-md">No creators found in Firestore. Users can sign up to create their profiles, or check mock data if Firestore is empty.</p>
                   )}
                 </div>
               </div>
@@ -561,25 +547,26 @@ export default function AdminSettingsPage() {
 
         <AccordionItem value="project-management">
            <Card className="shadow-lg">
-            <AccordionTrigger className="p-6 hover:no-underline">
+            <AccordionTrigger className="p-6 hover:no-underline text-left">
               <div className="flex items-center gap-3">
-                <ListChecks className="w-6 h-6 text-accent" />
+                <ListChecks className="w-7 h-7 text-accent" />
                 <h3 className="text-2xl font-semibold text-foreground">Project Management</h3>
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
-                <div className="flex items-start gap-2 p-3 mb-4 bg-blue-50 border border-blue-300 rounded-md text-sm text-blue-700">
-                  <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <p>Projects are added via the "Share Project" page by logged-in users. Below you can view and delete projects. Full project editing is a placeholder.</p>
+                <div className="flex items-start gap-3 p-4 mb-4 bg-primary/10 border-2 border-primary/30 rounded-lg text-sm text-primary-foreground shadow">
+                  <Info className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
+                  <p>Projects are added via the "Share Project" page by logged-in users. Below you can view and delete projects. Full project editing is a placeholder and would typically involve a dedicated editing form.</p>
                 </div>
                 {projects.length > 0 ? (
-                    <ul className="space-y-3 max-h-96 overflow-y-auto p-1 border rounded-md">
+                    <ul className="space-y-3 max-h-96 overflow-y-auto p-1 border rounded-md bg-background">
                         {projects.map(project => ( 
-                        <li key={project.id} className="p-3 border rounded-md bg-card-foreground/5 space-y-1 hover:bg-card-foreground/10">
+                        <li key={project.id} className="p-3 border rounded-md bg-card space-y-1 hover:bg-accent/5 transition-shadow">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="font-semibold">{project.title} <span className="text-xs text-muted-foreground">(ID: {project.id.substring(0,6)}...)</span></p>
-                                    <p className="text-xs text-muted-foreground">By {project.creatorName} (CreatorID: {project.creatorId.substring(0,6)}...)</p>
+                                    <p className="font-semibold text-primary">{project.title} <span className="text-xs text-muted-foreground">(ID: {project.id.substring(0,6)}...)</span></p>
+                                    <p className="text-sm text-muted-foreground">By {project.creatorName} (CreatorID: {project.creatorId.substring(0,6)}...)</p>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="h-3 w-3 text-destructive/80"/> {(project.likeCount || 0).toLocaleString()} likes</p>
                                 </div>
                                 <div className="space-x-2">
                                   <Button variant="outline" size="sm" onClick={() => handleEditProject(project.id)}>
@@ -590,13 +577,13 @@ export default function AdminSettingsPage() {
                                   </Button>
                                 </div>
                             </div>
-                            {project.projectUrl && <p className="text-xs text-muted-foreground truncate">URL: <a href={project.projectUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{project.projectUrl}</a></p>}
+                            {project.projectUrl && <p className="text-xs text-muted-foreground truncate">URL: <a href={project.projectUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">{project.projectUrl}</a></p>}
                             {project.techStack && project.techStack.length > 0 && <p className="text-xs text-muted-foreground truncate">Tech: {project.techStack.join(', ')}</p>}
                         </li>
                         ))}
                     </ul>
                 ) : (
-                     <p className="text-muted-foreground">No projects found in Firestore. Users can add projects via the "Share Project" page, or check mock data if Firestore is empty.</p>
+                     <p className="text-muted-foreground p-4 text-center bg-muted/50 rounded-md">No projects found in Firestore. Users can add projects via the "Share Project" page, or check mock data if Firestore is empty.</p>
                   )}
             </AccordionContent>
           </Card>
@@ -618,6 +605,3 @@ export default function AdminSettingsPage() {
     </div>
   );
 }
-    
-
-    

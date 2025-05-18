@@ -12,9 +12,11 @@ export interface Project {
   creatorId: string; // Firebase Auth UID of the creator
   creatorName: string; // Name of the creator
   uploadDate: string; // ISO string
+  createdAt?: any; // Firestore serverTimestamp for ordering
   isFeatured?: boolean;
   projectUrl?: string; // Link to live project, repo, or Figma file
   techStack?: string[]; // Technologies used
+  likeCount?: number; // Number of likes
 }
 
 export interface Creator {

@@ -15,11 +15,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { CATEGORIES } from '@/lib/constants';
 import type { Category, Project } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, Edit3, CheckCircle, ExternalLink, LogIn, UserCheck, ImagePlus, UserCog } from 'lucide-react';
+import { UploadCloud, Code2, Smartphone, DraftingCompass, FileJson, GitFork, Loader2, CheckCircle, ExternalLink, LogIn, UserCheck, ImagePlus, UserCog } from 'lucide-react';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import { cn } from '@/lib/utils';
-import { auth, db, storage, app } from '@/lib/firebase'; // Added storage and app
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Firebase Storage imports
+import { auth, db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -90,7 +90,6 @@ export default function UploadPage() {
   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
-        // Don't save file object to localStorage
         const { previewImageFile, ...restOfValue } = value;
         localStorage.setItem('uploadFormDraft', JSON.stringify(restOfValue));
       } catch (error) {
@@ -128,7 +127,7 @@ export default function UploadPage() {
       reader.readAsDataURL(file);
     } else {
       setImagePreview(null);
-      form.setValue('previewImageFile', undefined);
+      form.setValue('previewImageFile', undefined); // Use undefined as per schema
     }
   };
 
@@ -146,6 +145,7 @@ export default function UploadPage() {
       const file = data.previewImageFile;
       const storageRef = ref(storage, `project-previews/${user.uid}/${Date.now()}_${file.name}`);
       try {
+        toast({ title: "Uploading Image...", description: "Please wait." });
         const snapshot = await uploadBytes(storageRef, file);
         uploadedImageUrl = await getDownloadURL(snapshot.ref);
         toast({ title: "Image Uploaded", description: "Preview image saved to Firebase Storage." });
@@ -156,7 +156,8 @@ export default function UploadPage() {
         return;
       }
     } else {
-      toast({ title: "Missing Image", description: "Please upload a preview image.", variant: "destructive" });
+      // This case should ideally be prevented by form validation, but as a safeguard:
+      toast({ title: "Missing Image", description: "Preview image is required.", variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
@@ -170,22 +171,24 @@ export default function UploadPage() {
       description: data.description || '',
       tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
       category: data.category,
-      previewImageUrl: uploadedImageUrl, // Use the URL from Firebase Storage
+      previewImageUrl: uploadedImageUrl,
       projectUrl: data.projectUrl || '',
       techStack: data.techStack ? data.techStack.split(',').map(tech => tech.trim()).filter(tech => tech) : [],
       creatorId: user.uid,
       creatorName: user.displayName || user.email || 'Anonymous Creator',
-      uploadDate: new Date().toISOString(),
-      isFeatured: false,
+      uploadDate: new Date().toISOString(), // Keep for potential legacy use or display
+      isFeatured: false, // Default
       dataAiHint: generateDataAiHint(data.title),
-      createdAt: serverTimestamp(),
+      createdAt: serverTimestamp(), // For Firestore ordering
+      likeCount: 0, // Initialize like count
     };
 
     try {
+      toast({ title: "Submitting Project...", description: "Saving details to database." });
       const docRef = await addDoc(collection(db, 'projects'), projectDataToSave);
       toast({
         title: 'Project Submitted!',
-        description: `"${data.title}" has been saved with ID: ${docRef.id}.`,
+        description: `"${data.title}" has been successfully shared.`,
         className: "bg-green-100 border-green-400 text-green-800"
       });
       form.reset();
@@ -246,7 +249,7 @@ export default function UploadPage() {
       </header>
 
       <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-        <div className="w-full bg-muted rounded-full h-2.5">
+        <div className="w-full bg-muted rounded-full h-2.5 shadow-inner">
           <div className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" style={{ width: `${currentProgress}%` }}></div>
         </div>
         <p className="text-sm text-center text-muted-foreground mt-2">Step {step} of 3: {step === 1 ? "Project Info & Image Upload" : step === 2 ? "Details" : "Confirm & Submit"}</p>
@@ -254,61 +257,62 @@ export default function UploadPage() {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {step === 1 && (
-           <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+           <Card className="shadow-xl animate-fade-in-up border-2 border-primary/20" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2"><ImagePlus className="text-primary w-7 h-7"/>Project Information & Preview Image</CardTitle>
+              <CardTitle className="text-2xl flex items-center gap-3"><ImagePlus className="text-primary w-8 h-8"/>Project Information & Preview Image</CardTitle>
               <CardDescription>Provide the main details for your project and upload its preview image.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6"> {/* Increased spacing */}
                <div>
-                <Label htmlFor="title">Project Title</Label>
-                <Input id="title" {...form.register('title')} />
-                {form.formState.errors.title && <p className="text-sm font-medium text-destructive">{form.formState.errors.title.message}</p>}
+                <Label htmlFor="title" className="text-base">Project Title</Label>
+                <Input id="title" {...form.register('title')} className="h-11 text-base mt-1" />
+                {form.formState.errors.title && <p className="text-sm font-medium text-destructive mt-1">{form.formState.errors.title.message}</p>}
               </div>
               <div>
-                <Label htmlFor="previewImageFile">Project Preview Image</Label>
+                <Label htmlFor="previewImageFile" className="text-base">Project Preview Image</Label>
                  <Controller
                     name="previewImageFile"
                     control={form.control}
-                    render={({ field: { ref, name, onBlur } }) => ( // Exclude onChange and value from field
+                    render={({ field: { ref, name, onBlur } }) => ( 
                         <Input
                             id="previewImageFile"
                             type="file"
                             accept="image/png, image/jpeg, image/webp, image/gif"
-                            onChange={handleFileChange} // Use custom handler
+                            onChange={handleFileChange} 
                             ref={ref}
                             name={name}
                             onBlur={onBlur}
+                            className="mt-1 h-11 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                         />
                     )}
                 />
                 {imagePreview && (
-                    <div className="mt-2 border p-2 rounded-md inline-block">
-                        <Image src={imagePreview} alt="Preview" width={200} height={150} className="rounded-md object-contain max-h-40" />
+                    <div className="mt-3 border-2 border-dashed border-primary/30 p-3 rounded-lg inline-block bg-card shadow-sm">
+                        <Image src={imagePreview} alt="Preview" width={240} height={180} className="rounded-md object-contain max-h-48" />
                     </div>
                 )}
                 <p className="text-xs text-muted-foreground mt-1">Upload an image (JPG, PNG, GIF, WEBP). Max size: {MAX_FILE_SIZE_MB}MB.</p>
-                {form.formState.errors.previewImageFile && <p className="text-sm font-medium text-destructive">{form.formState.errors.previewImageFile.message}</p>}
+                {form.formState.errors.previewImageFile && <p className="text-sm font-medium text-destructive mt-1">{form.formState.errors.previewImageFile.message}</p>}
               </div>
                <div>
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category" className="text-base mb-2 block">Category</Label>
                 <Controller
                   name="category"
                   control={form.control}
                   render={({ field }) => (
                     <RadioGroup
                       onValueChange={field.onChange}
-                      value={field.value} // Ensure value is passed
-                      className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2"
+                      value={field.value} 
+                      className="grid grid-cols-2 md:grid-cols-3 gap-3"
                     >
                       {CATEGORIES.map(category => (
                         <Label
                           key={category}
                           htmlFor={`category-${category}`}
-                          className={`flex items-center space-x-2 border rounded-md p-3 hover:bg-accent/20 transition-colors cursor-pointer ${field.value === category ? 'border-primary ring-2 ring-primary bg-primary/10' : 'border-border'}`}
+                          className={`flex items-center space-x-3 border rounded-lg p-4 hover:bg-accent/10 transition-colors cursor-pointer text-sm font-medium ${field.value === category ? 'border-primary ring-2 ring-primary bg-primary/5' : 'border-border'}`}
                         >
                           <RadioGroupItem value={category} id={`category-${category}`} />
-                          <CategoryIcon category={category} />
+                          <CategoryIcon category={category} className="w-6 h-6 text-primary/80" />
                           <span>{category}</span>
                         </Label>
                       ))}
@@ -318,71 +322,71 @@ export default function UploadPage() {
                 {form.formState.errors.category && <p className="text-sm font-medium text-destructive mt-1">{form.formState.errors.category.message}</p>}
               </div>
             </CardContent>
-            <CardFooter className="flex justify-end">
-                <Button type="button" onClick={() => form.trigger(['title', 'previewImageFile', 'category']).then(isValid => isValid && setStep(2))}>Next: Add Details</Button>
+            <CardFooter className="flex justify-end pt-4">
+                <Button type="button" size="lg" onClick={() => form.trigger(['title', 'previewImageFile', 'category']).then(isValid => isValid && setStep(2))}>Next: Add Details</Button>
             </CardFooter>
           </Card>
         )}
 
         {step === 2 && (
-          <Card className="shadow-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          <Card className="shadow-xl animate-fade-in-up border-2 border-primary/20" style={{ animationDelay: '0.2s' }}>
              <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2"><Edit3 className="text-primary w-7 h-7"/>Additional Project Details</CardTitle>
+              <CardTitle className="text-2xl flex items-center gap-3"><ExternalLink className="text-primary w-8 h-8"/>Additional Project Details</CardTitle>
               <CardDescription>Provide more information about your project: its URL, description, tech stack, and tags.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div>
-                <Label htmlFor="projectUrl">Project URL (Optional)</Label>
-                <div className="relative">
-                  <Input id="projectUrl" {...form.register('projectUrl')} placeholder="https://github.com/yourname/project or https://your-live-demo.com" className="pl-8" />
-                  <ExternalLink className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Label htmlFor="projectUrl" className="text-base">Project URL (Optional)</Label>
+                <div className="relative mt-1">
+                  <Input id="projectUrl" {...form.register('projectUrl')} placeholder="e.g., https://github.com/yourname/project or https://your-live-demo.com" className="pl-10 h-11 text-base" />
+                  <ExternalLink className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Link to your GitHub repository, live demo, Figma file, etc.</p>
-                {form.formState.errors.projectUrl && <p className="text-sm font-medium text-destructive">{form.formState.errors.projectUrl.message}</p>}
+                {form.formState.errors.projectUrl && <p className="text-sm font-medium text-destructive mt-1">{form.formState.errors.projectUrl.message}</p>}
               </div>
 
               <div>
-                <Label htmlFor="description">Description / README (Optional)</Label>
-                <Textarea id="description" {...form.register('description')} rows={4} placeholder="Describe your project, its features, and purpose." />
+                <Label htmlFor="description" className="text-base">Description / README (Optional)</Label>
+                <Textarea id="description" {...form.register('description')} rows={5} placeholder="Describe your project, its features, and purpose. Markdown is supported for formatting." className="mt-1 text-base" />
               </div>
 
               <div>
-                <Label htmlFor="techStack">Tech Stack (Comma-separated, Optional)</Label>
-                <Input id="techStack" {...form.register('techStack')} placeholder="E.g., React, Node.js, Python, Figma" />
+                <Label htmlFor="techStack" className="text-base">Tech Stack (Comma-separated, Optional)</Label>
+                <Input id="techStack" {...form.register('techStack')} placeholder="E.g., React, Node.js, Python, Figma" className="mt-1 h-11 text-base"/>
               </div>
 
               <div>
-                <Label htmlFor="tags">Tags (Comma-separated, Optional)</Label>
-                <Input id="tags" {...form.register('tags')} placeholder="E.g., full-stack, ui-design, machine-learning, game-dev" />
+                <Label htmlFor="tags" className="text-base">Tags (Comma-separated, Optional)</Label>
+                <Input id="tags" {...form.register('tags')} placeholder="E.g., full-stack, ui-design, machine-learning, game-dev" className="mt-1 h-11 text-base"/>
               </div>
             </CardContent>
-             <CardFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={() => setStep(1)}>Back to Project Info</Button>
-                <Button type="button" onClick={() => form.trigger().then(isValid => { if(isValid) setStep(3); else toast({title: "Validation Error", description: "Please check for errors in the form.", variant: "destructive"}) })}>Next: Confirm & Submit</Button>
+             <CardFooter className="flex justify-between pt-4">
+                <Button type="button" variant="outline" size="lg" onClick={() => setStep(1)}>Back to Project Info</Button>
+                <Button type="button" size="lg" onClick={() => form.trigger().then(isValid => { if(isValid) setStep(3); else toast({title: "Validation Error", description: "Please check for errors in the form.", variant: "destructive"}) })}>Next: Confirm & Submit</Button>
              </CardFooter>
           </Card>
         )}
 
         {step === 3 && (
-            <Card className="shadow-xl bg-gradient-to-br from-primary/5 to-accent/5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <Card className="shadow-2xl bg-gradient-to-br from-primary/5 to-accent/5 animate-fade-in-up border-2 border-primary/30" style={{ animationDelay: '0.2s' }}>
                 <CardHeader>
-                    <CardTitle className="text-2xl flex items-center gap-2"><CheckCircle className="text-green-500 w-7 h-7"/>Confirm & Submit Project</CardTitle>
+                    <CardTitle className="text-2xl flex items-center gap-3"><CheckCircle className="text-green-500 w-8 h-8"/>Confirm & Submit Project</CardTitle>
                     <CardDescription>Review your project details before finalizing. This will upload your image and save the project to Firestore.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                    <h3 className="font-semibold text-lg">Summary:</h3>
-                    <div className="p-3 border rounded-md bg-background/50 space-y-1">
+                <CardContent className="space-y-4 text-base">
+                    <h3 className="font-semibold text-xl text-primary">Summary:</h3>
+                    <div className="p-4 border rounded-lg bg-card/70 space-y-2 shadow-sm">
                         <p><strong>Title:</strong> {form.getValues('title')}</p>
                         <p><strong>Category:</strong> {form.getValues('category')}</p>
                         {imagePreview &&
-                            <div className='my-2'>
-                                <p><strong>Preview Image:</strong></p>
+                            <div className='my-3'>
+                                <p className="font-medium mb-1"><strong>Preview Image:</strong></p>
                                 <Image
                                   src={imagePreview}
                                   alt="Project preview"
-                                  width={200}
-                                  height={150}
-                                  className="rounded-md shadow-md object-contain max-h-40 mt-1"
+                                  width={240}
+                                  height={180}
+                                  className="rounded-lg shadow-md object-contain max-h-48 border"
                                 />
                             </div>
                         }
@@ -390,14 +394,14 @@ export default function UploadPage() {
                         {form.getValues('techStack') && <p><strong>Tech Stack:</strong> {form.getValues('techStack')}</p>}
                         {form.getValues('tags') && <p><strong>Tags:</strong> {form.getValues('tags')}</p>}
                         {form.getValues('description') && <p className="mt-2"><strong>Description:</strong><br/><span className="text-muted-foreground whitespace-pre-line line-clamp-4">{form.getValues('description')}</span></p>}
-                        <p><strong>Creator:</strong> {user?.displayName || user?.email}</p>
+                        <p className="pt-2"><strong>Creator:</strong> {user?.displayName || user?.email}</p>
                     </div>
                 </CardContent>
-                <CardFooter className="flex justify-between">
-                    <Button type="button" variant="outline" onClick={() => setStep(2)} disabled={isSubmitting}>Edit Details</Button>
+                <CardFooter className="flex justify-between pt-4">
+                    <Button type="button" variant="outline" size="lg" onClick={() => setStep(2)} disabled={isSubmitting}>Edit Details</Button>
                     <Button type="submit" size="lg" className="pulse-gentle" disabled={isSubmitting || !form.formState.isValid}>
                         {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" /> }
-                        {isSubmitting ? 'Submitting...' : 'Submit Project'}
+                        {isSubmitting ? 'Submitting...' : 'Submit Project to Showcase'}
                     </Button>
                 </CardFooter>
             </Card>
