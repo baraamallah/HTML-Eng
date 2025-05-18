@@ -34,11 +34,19 @@ const CategoryIcon = ({ category, className }: { category: Category, className?:
 const FALLBACK_MODAL_IMAGE_URL = 'https://placehold.co/800x450.png?text=Preview+Error';
 const ALLOWED_MODAL_HOSTNAMES = ['placehold.co', 'firebasestorage.googleapis.com'];
 
+interface ToastMessage {
+  title: string;
+  description: string;
+  variant: 'default' | 'destructive';
+}
+
 export default function GalleryPage() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const { toast } = useToast();
+  const [toastMessageContent, setToastMessageContent] = useState<ToastMessage | null>(null);
+
 
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,6 +61,7 @@ export default function GalleryPage() {
     const fetchProjects = async () => {
       setIsLoadingProjects(true);
       setFetchError(null);
+      setToastMessageContent(null); // Clear any previous error toast messages
       try {
         const projectsRef = collection(db, 'projects');
         const q = query(projectsRef, orderBy('createdAt', 'desc'));
@@ -62,14 +71,13 @@ export default function GalleryPage() {
         setAllProjects(fetchedProjects);
       } catch (error: any) {
         console.error("Error fetching projects: ", error);
-        setFetchError(`Failed to load projects: ${error.message}. Please try again later.`);
-        setTimeout(() => {
-          toast({
-            title: 'Error Loading Projects',
-            description: `Could not fetch projects from Firestore: ${error.message}`,
-            variant: 'destructive',
-          });
-        }, 0);
+        const errorMessage = `Failed to load projects: ${error.message}. Please try again later.`;
+        setFetchError(errorMessage);
+        setToastMessageContent({ // Set state to trigger toast via another useEffect
+          title: 'Error Loading Projects',
+          description: `Could not fetch projects from Firestore: ${error.message}`,
+          variant: 'destructive',
+        });
       } finally {
         setIsLoadingProjects(false);
       }
@@ -78,6 +86,18 @@ export default function GalleryPage() {
     fetchProjects();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
+
+  useEffect(() => {
+    if (toastMessageContent) {
+      toast({
+        title: toastMessageContent.title,
+        description: toastMessageContent.description,
+        variant: toastMessageContent.variant,
+      });
+      setToastMessageContent(null); // Reset after displaying
+    }
+  }, [toastMessageContent, toast]);
+
 
   const handleViewProjectDetails = (project: Project) => {
     setSelectedProject(project);
@@ -89,7 +109,6 @@ export default function GalleryPage() {
           imageUrlToUseInModal = project.previewImageUrl;
         } else {
           console.warn(`Modal: Hostname ${url.hostname} not allowed for ${project.title}. Using fallback.`);
-          // Removed toast here to reduce complexity if this was also causing issues
         }
       } catch (e) {
         console.warn(`Modal: Invalid project.previewImageUrl for ${project.title}: ${project.previewImageUrl}. Using fallback.`);
@@ -108,15 +127,22 @@ export default function GalleryPage() {
     setLikedProjectIds(prevLikedIds => {
       const newLikedIds = new Set(prevLikedIds);
       let likeChange = 0;
+      let toastTitle = "";
+      let toastDescription = "";
+
       if (newLikedIds.has(projectId)) {
         newLikedIds.delete(projectId);
         likeChange = -1;
-        toast({ title: "Project Unliked!", description: "You've unliked this project. (Client-side only)", duration: 2000 });
+        toastTitle = "Project Unliked!";
+        toastDescription = "You've unliked this project.";
       } else {
         newLikedIds.add(projectId);
         likeChange = 1;
-        toast({ title: "Project Liked!", description: "Thanks for your feedback! (Client-side only)", duration: 2000 });
+        toastTitle = "Project Liked!";
+        toastDescription = "Thanks for your feedback!";
       }
+      
+      toast({ title: toastTitle, description: `${toastDescription} (Client-side only)`, duration: 2000 });
 
       setAllProjects(prevProjects => 
         prevProjects.map(p => 
@@ -327,3 +353,4 @@ export default function GalleryPage() {
     </div>
   );
 }
+
