@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid, Loader2, AlertCircle, ExternalLink, UserCircle, Github, Heart } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase'; // Added auth
+import { collection, getDocs, query, orderBy, doc, updateDoc, increment } from 'firebase/firestore'; // Added doc, updateDoc, increment
+import { useAuthState } from 'react-firebase-hooks/auth'; // Added useAuthState
 import { useToast } from '@/hooks/use-toast';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 
@@ -41,12 +42,12 @@ interface ToastMessage {
 }
 
 export default function GalleryPage() {
+  const [user] = useAuthState(auth); // Get current user
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const { toast } = useToast();
   const [toastMessageContent, setToastMessageContent] = useState<ToastMessage | null>(null);
-
 
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,18 +62,18 @@ export default function GalleryPage() {
     const fetchProjects = async () => {
       setIsLoadingProjects(true);
       setFetchError(null);
-      setToastMessageContent(null); 
+      setToastMessageContent(null);
       try {
         const projectsRef = collection(db, 'projects');
-        const q = query(projectsRef, orderBy('createdAt', 'desc')); 
+        const q = query(projectsRef, orderBy('createdAt', 'desc'));
         
         const querySnapshot = await getDocs(q);
         const fetchedProjects = querySnapshot.docs.map(doc => {
           const data = doc.data();
-          return { 
-            id: doc.id, 
-            ...data, 
-            likeCount: data.likeCount || 0 // Ensure likeCount is a number, defaulting to 0
+          return {
+            id: doc.id,
+            ...data,
+            likeCount: data.likeCount || 0
           } as Project;
         });
         setAllProjects(fetchedProjects);
@@ -80,7 +81,7 @@ export default function GalleryPage() {
         console.error("Error fetching projects: ", error);
         const errorMessage = `Failed to load projects: ${error.message}. Please try again later.`;
         setFetchError(errorMessage);
-        setToastMessageContent({ 
+        setToastMessageContent({
           title: 'Error Loading Projects',
           description: `Could not fetch projects from Firestore: ${error.message}`,
           variant: 'destructive',
@@ -91,17 +92,17 @@ export default function GalleryPage() {
     };
 
     fetchProjects();
-  }, []); 
+  }, []);
 
   useEffect(() => {
     if (toastMessageContent) {
-      setTimeout(() => { // Defer toast to next tick
+      setTimeout(() => {
         toast({
           title: toastMessageContent.title,
           description: toastMessageContent.description,
           variant: toastMessageContent.variant,
         });
-        setToastMessageContent(null); // Reset after displaying
+        setToastMessageContent(null);
       }, 0);
     }
   }, [toastMessageContent, toast]);
@@ -131,39 +132,82 @@ export default function GalleryPage() {
     setSelectedProject(null);
   };
   
- const handleLikeProject = (projectId: string) => {
-    setLikedProjectIds(prevLikedIds => {
-      const newLikedIds = new Set(prevLikedIds);
-      let likeChange = 0;
-      let toastTitle = "";
-      let toastDescription = "";
+  const handleLikeProject = async (projectId: string) => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please log in to like projects.",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
 
-      if (newLikedIds.has(projectId)) {
-        newLikedIds.delete(projectId);
-        likeChange = -1;
-        toastTitle = "Project Unliked!";
-        toastDescription = "You've unliked this project.";
-      } else {
-        newLikedIds.add(projectId);
-        likeChange = 1;
-        toastTitle = "Project Liked!";
-        toastDescription = "Thanks for your feedback!";
-      }
-      
-      toast({ title: toastTitle, description: `${toastDescription} (Client-side only)`, duration: 2000 });
+    const projectRef = doc(db, "projects", projectId);
+    let newLikeCount = 0;
+    let likeChange = 0;
+    let toastTitle = "";
+    let toastDescription = "";
 
-      setAllProjects(prevProjects => 
-        prevProjects.map(p => 
-          p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
-        )
-      );
+    // Optimistically update UI
+    const newLikedIds = new Set(likedProjectIds);
+    if (newLikedIds.has(projectId)) {
+      newLikedIds.delete(projectId);
+      likeChange = -1;
+      toastTitle = "Project Unliked";
+      toastDescription = "Your unlike has been recorded.";
+    } else {
+      newLikedIds.add(projectId);
+      likeChange = 1;
+      toastTitle = "Project Liked!";
+      toastDescription = "Thanks for your feedback!";
+    }
+    setLikedProjectIds(newLikedIds);
+
+    const projectIndex = allProjects.findIndex(p => p.id === projectId);
+    if (projectIndex !== -1) {
+      const updatedProjects = [...allProjects];
+      const currentProject = updatedProjects[projectIndex];
+      const optimisticLikeCount = Math.max(0, (currentProject.likeCount || 0) + likeChange);
+      updatedProjects[projectIndex] = { ...currentProject, likeCount: optimisticLikeCount };
+      setAllProjects(updatedProjects);
+
       if (selectedProject && selectedProject.id === projectId) {
-        setSelectedProject(prev => prev ? { ...prev, likeCount: Math.max(0, (prev.likeCount || 0) + likeChange) } : null);
+        setSelectedProject(prev => prev ? { ...prev, likeCount: optimisticLikeCount } : null);
       }
-      return newLikedIds;
-    });
-  };
+      newLikeCount = optimisticLikeCount; // For the toast message
+    }
+    
+    try {
+      await updateDoc(projectRef, {
+        likeCount: increment(likeChange)
+      });
+      toast({ title: toastTitle, description: `${toastDescription}`, duration: 2000 });
+      // Optionally, re-fetch the specific project or all projects to get the exact count from DB
+      // For now, optimistic update is fine for like counts.
+    } catch (error: any) {
+      console.error("Error updating like count: ", error);
+      toast({
+        title: "Error",
+        description: `Could not update like: ${error.message}`,
+        variant: "destructive",
+      });
+      // Revert optimistic UI update on error
+      const revertedLikedIds = new Set(likedProjectIds);
+      if (likeChange === 1) revertedLikedIds.delete(projectId); // Was liked, now remove
+      else if (likeChange === -1) revertedLikedIds.add(projectId); // Was unliked, now add back
+      setLikedProjectIds(revertedLikedIds);
 
+      if (projectIndex !== -1) {
+         const revertedProjects = [...allProjects];
+         revertedProjects[projectIndex] = { ...revertedProjects[projectIndex], likeCount: Math.max(0, (revertedProjects[projectIndex].likeCount || 0) - likeChange) };
+         setAllProjects(revertedProjects);
+         if (selectedProject && selectedProject.id === projectId) {
+            setSelectedProject(prev => prev ? { ...prev, likeCount: Math.max(0, (prev.likeCount || 0) - likeChange) } : null);
+         }
+      }
+    }
+  };
 
   const filteredProjects = allProjects.filter(project => {
     const categoryMatch = activeCategory === 'All' || project.category === activeCategory;

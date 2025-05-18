@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { ProjectCard } from '@/components/project-card';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, where, getDocs, deleteDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc, orderBy, updateDoc, increment } from 'firebase/firestore'; // Added updateDoc, increment
 import type { Project } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, LayoutGrid, Edit3, Trash2, Info } from 'lucide-react';
@@ -45,7 +45,7 @@ export default function MyProjectsPage() {
         return {
           id: doc.id,
           ...data,
-          likeCount: data.likeCount || 0 // Ensure likeCount is a number, defaulting to 0
+          likeCount: data.likeCount || 0 
         } as Project;
       });
       setProjects(userProjects);
@@ -84,39 +84,63 @@ export default function MyProjectsPage() {
     });
   };
   
-  const handleLikeProjectDashboard = (projectId: string) => {
-     setLikedProjectIds(prevLikedIds => {
-      const newLikedIds = new Set(prevLikedIds);
-      let likeChange = 0;
-      if (newLikedIds.has(projectId)) {
-        newLikedIds.delete(projectId);
-        likeChange = -1;
-        toast({ title: "Project Unliked!", description: "You've unliked this project. (Client-side only)", duration: 2000 });
-      } else {
-        newLikedIds.add(projectId);
-        likeChange = 1;
-        toast({ title: "Project Liked!", description: "Thanks for your feedback! (Client-side only)", duration: 2000 });
-      }
+  const handleLikeProjectDashboard = async (projectId: string) => {
+    if (!user) { // Should not happen on this page, but good practice
+      toast({ title: "Login Required", description: "Please log in to like projects.", variant: "destructive" });
+      return;
+    }
+
+    const projectRef = doc(db, "projects", projectId);
+    let likeChange = 0;
+    let toastTitle = "";
+
+    const newLikedIds = new Set(likedProjectIds);
+    if (newLikedIds.has(projectId)) {
+      newLikedIds.delete(projectId);
+      likeChange = -1;
+      toastTitle = "Project Unliked";
+    } else {
+      newLikedIds.add(projectId);
+      likeChange = 1;
+      toastTitle = "Project Liked!";
+    }
+    setLikedProjectIds(newLikedIds);
+
+    setProjects(prevProjects =>
+      prevProjects.map(p =>
+        p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
+      )
+    );
+    
+    try {
+      await updateDoc(projectRef, {
+        likeCount: increment(likeChange)
+      });
+      toast({ title: toastTitle, description: `Like count updated in database.`, duration: 2000 });
+    } catch (error: any) {
+      console.error("Error updating like count: ", error);
+      toast({ title: 'Error', description: `Could not update like: ${error.message}`, variant: 'destructive' });
+      // Revert optimistic UI update
+      const revertedLikedIds = new Set(likedProjectIds);
+      if (likeChange === 1) revertedLikedIds.delete(projectId);
+      else if (likeChange === -1) revertedLikedIds.add(projectId);
+      setLikedProjectIds(revertedLikedIds);
       
-      setProjects(prevProjects => 
-        prevProjects.map(p => 
-          p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
+      setProjects(prevProjects =>
+        prevProjects.map(p =>
+          p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) - likeChange) } : p
         )
       );
-      return newLikedIds;
-    });
+    }
   };
   
   const handleViewProjectDetailsDashboard = (project: Project) => {
-    // For "My Projects", we might not have a separate modal, or it could link to the gallery view with modal
-    // For now, let's just indicate it or potentially redirect to the gallery
     toast({
       title: "View Details",
-      description: `Opening details for ${project.title}. In a full app, this might open the gallery modal.`,
+      description: `Opening details for ${project.title}. In a full app, this might open the gallery modal or a dedicated page.`,
       duration: 3000,
     });
-    // Example: Open the gallery page with the project selected (requires URL param handling in gallery)
-    // router.push(`/gallery?project=${project.id}`);
+    router.push(`/gallery?project=${project.id}`); // Example: Navigate to gallery with project focused
   };
 
 
