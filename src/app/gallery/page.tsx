@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 
 const CategoryIcon = ({ category, className }: { category: Category, className?: string }) => {
-  const iconProps = { className: className || "w-5 h-5" };
+  const iconProps = { className: className || "w-5 h-5 mr-2" }; // Adjusted default for consistency
   switch (category) {
     case 'Web App': return <Code2 {...iconProps} />;
     case 'Mobile App': return <Smartphone {...iconProps} />;
@@ -42,11 +42,12 @@ export default function GalleryPage() {
 
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date'>('date'); // 'date' or 'likes' could be an option later
+  const [sortBy, setSortBy] = useState<'date'>('date');
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState(FALLBACK_MODAL_IMAGE_URL);
+  const [likedProjectIds, setLikedProjectIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -54,7 +55,6 @@ export default function GalleryPage() {
       setFetchError(null);
       try {
         const projectsRef = collection(db, 'projects');
-        // Assuming createdAt field exists and is a Firestore Timestamp for ordering
         const q = query(projectsRef, orderBy('createdAt', 'desc'));
         
         const querySnapshot = await getDocs(q);
@@ -86,9 +86,11 @@ export default function GalleryPage() {
           imageUrlToUseInModal = project.previewImageUrl;
         } else {
           console.warn(`Modal: Hostname ${url.hostname} not allowed for ${project.title}. Using fallback.`);
+          toast({ title: 'Image Preview Note', description: `Preview for "${project.title}" may not load correctly due to an unconfigured image host.`, variant: 'default', duration: 7000 });
         }
       } catch (e) {
         console.warn(`Modal: Invalid project.previewImageUrl for ${project.title}: ${project.previewImageUrl}. Using fallback.`);
+        toast({ title: 'Image Preview Note', description: `Preview for "${project.title}" may not load correctly due to an invalid image URL.`, variant: 'default', duration: 7000 });
       }
     }
     setModalImageUrl(imageUrlToUseInModal);
@@ -101,27 +103,31 @@ export default function GalleryPage() {
   };
   
   const handleLikeProject = (projectId: string) => {
-    // This is a conceptual UI-only update.
-    // In a real app, you would update Firestore and then refresh the state.
-    setAllProjects(prevProjects => 
-      prevProjects.map(p => 
-        p.id === projectId ? { ...p, likeCount: (p.likeCount || 0) + 1 } : p
-      )
-    );
-    if (selectedProject && selectedProject.id === projectId) {
-      setSelectedProject(prev => prev ? { ...prev, likeCount: (prev.likeCount || 0) + 1 } : null);
-    }
-    toast({
-      title: "Project Liked!",
-      description: "Note: Likes are not saved in this demo version.",
-      duration: 3000,
+    setLikedProjectIds(prevLikedIds => {
+      const newLikedIds = new Set(prevLikedIds);
+      let likeChange = 0;
+      if (newLikedIds.has(projectId)) {
+        newLikedIds.delete(projectId);
+        likeChange = -1;
+        toast({ title: "Project Unliked!", description: "You've unliked this project. (Client-side only)", duration: 2000 });
+      } else {
+        newLikedIds.add(projectId);
+        likeChange = 1;
+        toast({ title: "Project Liked!", description: "Thanks for your feedback! (Client-side only)", duration: 2000 });
+      }
+
+      // UI-only update for like count
+      setAllProjects(prevProjects => 
+        prevProjects.map(p => 
+          p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
+        )
+      );
+      if (selectedProject && selectedProject.id === projectId) {
+        setSelectedProject(prev => prev ? { ...prev, likeCount: Math.max(0, (prev.likeCount || 0) + likeChange) } : null);
+      }
+      return newLikedIds;
     });
     // TODO: Add actual Firestore update logic here in a real application
-    // Example:
-    // const projectRef = doc(db, 'projects', projectId);
-    // await updateDoc(projectRef, {
-    //   likeCount: increment(1)
-    // });
   };
 
 
@@ -135,12 +141,10 @@ export default function GalleryPage() {
     return categoryMatch && searchMatch;
   }).sort((a, b) => {
     if (sortBy === 'date') {
-      // Ensure createdAt is a valid Date object or can be converted to one
       const dateA = a.createdAt ? (typeof a.createdAt === 'string' ? new Date(a.createdAt) : (a.createdAt as any).toDate ? (a.createdAt as any).toDate() : new Date(a.uploadDate)) : new Date(a.uploadDate);
       const dateB = b.createdAt ? (typeof b.createdAt === 'string' ? new Date(b.createdAt) : (b.createdAt as any).toDate ? (b.createdAt as any).toDate() : new Date(b.uploadDate)) : new Date(b.uploadDate);
       return dateB.getTime() - dateA.getTime();
     }
-    // Add sorting by likes if needed in the future
     return 0;
   });
 
@@ -153,19 +157,21 @@ export default function GalleryPage() {
         <BrushStrokeDivider className="mx-auto mt-6 h-6 w-36 text-primary/50" />
       </header>
 
-      <Tabs defaultValue="All" onValueChange={(value) => setActiveCategory(value as Category | 'All')} className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 p-2 bg-card rounded-lg shadow-md border border-border">
-          <TabsTrigger value="All" className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg hover:bg-primary/10 data-[state=active]:hover:bg-primary/90 transition-all duration-200 rounded-md">
-            <ListFilter className="w-5 h-5"/>All Projects
-          </TabsTrigger>
-          {CATEGORIES.map(category => (
-            <TabsTrigger key={category} value={category} className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg hover:bg-primary/10 data-[state=active]:hover:bg-primary/90 transition-all duration-200 rounded-md">
-              <CategoryIcon category={category} className="w-5 h-5"/>
-              {category}
+      <div className="flex justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <Tabs defaultValue="All" onValueChange={(value) => setActiveCategory(value as Category | 'All')} className="w-full md:w-auto">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:inline-flex md:grid-cols-none lg:grid-cols-none gap-1 p-1 bg-muted rounded-lg shadow-inner">
+            <TabsTrigger value="All" className="flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/50 transition-colors duration-150 rounded-md">
+              <ListFilter className="w-5 h-5"/>All Projects
             </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+            {CATEGORIES.map(category => (
+              <TabsTrigger key={category} value={category} className="flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/50 transition-colors duration-150 rounded-md">
+                <CategoryIcon category={category} className="w-5 h-5"/>
+                {category}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
       
       <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 border border-border rounded-lg shadow-sm bg-card animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
         <div className="relative flex-grow">
@@ -184,7 +190,6 @@ export default function GalleryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="date" className="flex items-center text-base py-2"><CalendarDays className="w-4 h-4 mr-2" />Most Recent</SelectItem>
-            {/* Future: <SelectItem value="likes">Most Liked</SelectItem> */}
           </SelectContent>
         </Select>
       </div>
@@ -216,6 +221,7 @@ export default function GalleryPage() {
               animationDelay={`${0.4 + index * 0.05}s`}
               onViewDetails={handleViewProjectDetails}
               onLike={handleLikeProject}
+              isLiked={likedProjectIds.has(project.id)}
             />
           ))}
         </div>
@@ -253,7 +259,7 @@ export default function GalleryPage() {
                 Category: {selectedProject.category}
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-grow overflow-y-auto space-y-6 p-1 pr-3"> {/* Added p-1 pr-3 for scrollbar spacing */}
+            <div className="flex-grow overflow-y-auto space-y-6 p-1 pr-3">
               <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-2xl mt-2 bg-muted">
                 <Image
                   src={modalImageUrl}
@@ -299,7 +305,7 @@ export default function GalleryPage() {
             <DialogFooter className="sm:justify-between items-center pt-4 border-t gap-2">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => handleLikeProject(selectedProject.id)} className="group">
-                  <Heart className="w-6 h-6 text-destructive/70 group-hover:text-destructive group-hover:fill-destructive/20 transition-all"/>
+                  <Heart className={`w-6 h-6 transition-all duration-150 ease-in-out group-hover:text-destructive ${likedProjectIds.has(selectedProject.id) ? 'fill-destructive text-destructive' : 'text-destructive/70'}`}/>
                 </Button>
                 <span className="text-lg text-muted-foreground">{(selectedProject.likeCount || 0).toLocaleString()} Likes</span>
               </div>

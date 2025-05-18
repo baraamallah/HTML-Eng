@@ -15,13 +15,14 @@ interface ProjectCardProps {
   project: Project;
   animationDelay?: string;
   onViewDetails: (project: Project) => void;
-  onLike: (projectId: string) => void; // New prop for liking
+  onLike: (projectId: string) => void;
+  isLiked: boolean; // New prop to indicate if the current user has liked this project
 }
 
 const FALLBACK_IMAGE_URL = 'https://placehold.co/300x200.png?text=No+Preview';
 const ALLOWED_HOSTNAMES = ['placehold.co', 'firebasestorage.googleapis.com'];
 
-export function ProjectCard({ project, animationDelay, onViewDetails, onLike }: ProjectCardProps) {
+export function ProjectCard({ project, animationDelay, onViewDetails, onLike, isLiked }: ProjectCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const entry = useIntersectionObserver(cardRef, { threshold: 0.1, freezeOnceVisible: false });
   const isObservedVisible = !!entry?.isIntersecting;
@@ -59,6 +60,7 @@ export function ProjectCard({ project, animationDelay, onViewDetails, onLike }: 
   };
 
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Prevent modal open if clicking on external link or like button area
     if ((e.target as HTMLElement).closest('a[target="_blank"]') || (e.target as HTMLElement).closest('.like-button-area')) {
       return;
     }
@@ -66,7 +68,7 @@ export function ProjectCard({ project, animationDelay, onViewDetails, onLike }: 
   };
   
   const handleTitleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault(); 
+    e.preventDefault(); // Prevent default link navigation
     onViewDetails(project);
   };
 
@@ -86,12 +88,12 @@ export function ProjectCard({ project, animationDelay, onViewDetails, onLike }: 
       onClick={handleCardClick}
     >
       <CardHeader className="p-0 relative">
-        <div onClick={() => onViewDetails(project)} className="cursor-pointer w-full h-[200px] relative bg-muted overflow-hidden rounded-t-lg">
+        <div onClick={() => onViewDetails(project)} className="cursor-pointer w-full h-[200px] relative bg-muted overflow-hidden rounded-t-lg"> {/* Increased h-[200px] for better aspect */}
             <Image
               src={currentImageUrl}
               alt={project.title}
               fill 
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Responsive sizes
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               data-ai-hint={project.dataAiHint || "project preview"}
               onError={handleImageError}
@@ -100,12 +102,12 @@ export function ProjectCard({ project, animationDelay, onViewDetails, onLike }: 
         </div>
         {project.projectUrl && (
            <Button
-            variant="secondary" // Changed variant for better contrast
+            variant="secondary"
             size="icon"
             className="absolute top-3 right-3 bg-card/80 hover:bg-card text-foreground hover:text-primary scale-90 group-hover:scale-100 transition-transform z-10 shadow-md backdrop-blur-sm"
             aria-label="View Project Live or Repository"
             asChild
-            onClick={(e) => e.stopPropagation()} 
+            onClick={(e) => e.stopPropagation()} // Stop propagation to prevent card click
           >
             <Link href={project.projectUrl} target="_blank" rel="noopener noreferrer">
               {project.projectUrl.includes('github.com') ? <Github className="h-5 w-5" /> : <ExternalLink className="h-5 w-5" />}
@@ -115,6 +117,7 @@ export function ProjectCard({ project, animationDelay, onViewDetails, onLike }: 
       </CardHeader>
       <CardContent className="p-4 flex-grow">
         <CardTitle className="text-xl font-semibold mb-1 group-hover:text-primary transition-colors">
+          {/* Make title clickable to open details */}
           <a onClick={handleTitleClick} className="cursor-pointer hover:underline">{project.title}</a>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
@@ -131,9 +134,12 @@ export function ProjectCard({ project, animationDelay, onViewDetails, onLike }: 
         <Button variant="outline" size="sm" onClick={() => onViewDetails(project)} className="flex-grow mr-2">
           <Eye className="mr-2 h-4 w-4" />View Details
         </Button>
-        <div className="flex items-center gap-1 like-button-area">
+        <div className="flex items-center gap-1 like-button-area"> {/* Added like-button-area class */}
             <Button variant="ghost" size="icon" onClick={handleLikeClick} className="group rounded-full p-2 hover:bg-destructive/10">
-                <Heart className="h-5 w-5 text-destructive/70 group-hover:text-destructive group-hover:fill-destructive/10 transition-all" />
+                <Heart className={cn(
+                  "h-5 w-5 transition-all duration-150 ease-in-out group-hover:text-destructive",
+                  isLiked ? 'fill-destructive text-destructive' : 'text-destructive/70'
+                )} />
             </Button>
             <span className="text-sm text-muted-foreground">{(project.likeCount || 0).toLocaleString()}</span>
         </div>

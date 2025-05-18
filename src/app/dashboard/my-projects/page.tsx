@@ -22,6 +22,8 @@ export default function MyProjectsPage() {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [likedProjectIds, setLikedProjectIds] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     if (!loadingAuth && !user) {
@@ -67,47 +69,51 @@ export default function MyProjectsPage() {
   };
 
   const handleEditProject = (projectId: string) => {
-    // For now, this is a placeholder. In a full app, you'd navigate to an edit page:
-    // router.push(`/dashboard/edit-project/${projectId}`);
     toast({
       title: 'Edit Project (Prototype)',
-      description: `Editing project ID: ${projectId}. Full editing UI is a future enhancement.`,
+      description: `Editing project ID: ${projectId}. Full editing UI is a future enhancement. For now, re-upload the project.`,
       duration: 5000,
       icon: <Edit3 className="h-5 w-5" />
     });
   };
-
-  // Dummy onLike function for ProjectCard prop on this page
-  const handleLikeProject = (projectId: string) => {
-    toast({
-      title: "Like Action (My Projects)",
-      description: `Project ${projectId} like action triggered. (UI only on this page)`,
-      duration: 3000,
+  
+  const handleLikeProjectDashboard = (projectId: string) => {
+     setLikedProjectIds(prevLikedIds => {
+      const newLikedIds = new Set(prevLikedIds);
+      let likeChange = 0;
+      if (newLikedIds.has(projectId)) {
+        newLikedIds.delete(projectId);
+        likeChange = -1;
+        toast({ title: "Project Unliked!", description: "You've unliked this project. (Client-side only)", duration: 2000 });
+      } else {
+        newLikedIds.add(projectId);
+        likeChange = 1;
+        toast({ title: "Project Liked!", description: "Thanks for your feedback! (Client-side only)", duration: 2000 });
+      }
+      
+      setProjects(prevProjects => 
+        prevProjects.map(p => 
+          p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
+        )
+      );
+      return newLikedIds;
     });
-    // In a real app, this might not be a feature here, or would update state differently
-    // For consistency with ProjectCard, we provide a handler.
-    setProjects(prevProjects => 
-      prevProjects.map(p => 
-        p.id === projectId ? { ...p, likeCount: (p.likeCount || 0) + 1 } : p
-      )
-    );
   };
   
-  // Dummy onViewDetails function if ProjectCard expects it but it's not used here
-  // Or implement modal if needed on this page too
-  const handleViewProjectDetails = (project: Project) => {
-    // For this page, we might redirect or show a different kind of detail view
-    // For now, let's just log or show a simple toast
+  const handleViewProjectDetailsDashboard = (project: Project) => {
+    // For "My Projects", we might not have a separate modal, or it could link to the gallery view with modal
+    // For now, let's just indicate it or potentially redirect to the gallery
     toast({
-      title: "View Details (My Projects)",
-      description: `Viewing details for ${project.title}. (Not fully implemented on this page)`,
+      title: "View Details",
+      description: `Opening details for ${project.title}. In a full app, this might open the gallery modal.`,
       duration: 3000,
     });
-    // router.push(`/gallery?project=${project.id}`); // Option: redirect to gallery detail view
+    // Example: Open the gallery page with the project selected (requires URL param handling in gallery)
+    // router.push(`/gallery?project=${project.id}`);
   };
 
 
-  if (loadingAuth || isLoadingProjects && user) { // Show loading if auth is loading OR if projects are loading AND user is determined
+  if (loadingAuth || (isLoadingProjects && user)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="mx-auto h-12 w-12 text-primary mb-3 animate-spin" />
@@ -117,7 +123,6 @@ export default function MyProjectsPage() {
   }
 
   if (!user) {
-    // This state should be brief due to the useEffect redirect
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
         <p className="text-lg text-muted-foreground">Redirecting to login...</p>
@@ -160,8 +165,9 @@ export default function MyProjectsPage() {
               <ProjectCard
                 project={project}
                 animationDelay={`${0.4 + index * 0.05}s`}
-                onLike={handleLikeProject} // Pass the handler here
-                onViewDetails={handleViewProjectDetails} // Pass a handler for onViewDetails as well
+                onLike={handleLikeProjectDashboard}
+                onViewDetails={handleViewProjectDetailsDashboard}
+                isLiked={likedProjectIds.has(project.id)}
               />
               <div className="mt-2 flex gap-2 p-2 border border-t-0 rounded-b-md bg-card">
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditProject(project.id)}>
@@ -178,7 +184,7 @@ export default function MyProjectsPage() {
        <div className="flex items-start gap-2 p-3 mt-8 bg-blue-50 border border-blue-300 rounded-md text-sm text-blue-700 animate-fade-in-up" style={{animationDelay: '0.5s'}}>
           <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <p>
-            <strong>Note on Image Uploads:</strong> Project preview images are uploaded directly. Ensure your Firebase Storage rules are set up to allow writes to the 'project-previews/' path for authenticated users.
+            <strong>Note on Image Uploads:</strong> Project preview images are uploaded directly via the 'Share Project' page. Ensure your Firebase Storage rules allow writes to 'project-previews/[YOUR_USER_ID]' for authenticated users.
           </p>
       </div>
     </div>
