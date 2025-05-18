@@ -61,10 +61,11 @@ export default function GalleryPage() {
     const fetchProjects = async () => {
       setIsLoadingProjects(true);
       setFetchError(null);
-      setToastMessageContent(null); // Clear any previous error toast messages
+      setToastMessageContent(null); 
       try {
         const projectsRef = collection(db, 'projects');
-        const q = query(projectsRef, orderBy('createdAt', 'desc'));
+        // Use createdAt for more reliable Firestore ordering if available, otherwise uploadDate
+        const q = query(projectsRef, orderBy('createdAt', 'desc')); 
         
         const querySnapshot = await getDocs(q);
         const fetchedProjects = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
@@ -73,7 +74,7 @@ export default function GalleryPage() {
         console.error("Error fetching projects: ", error);
         const errorMessage = `Failed to load projects: ${error.message}. Please try again later.`;
         setFetchError(errorMessage);
-        setToastMessageContent({ // Set state to trigger toast via another useEffect
+        setToastMessageContent({ 
           title: 'Error Loading Projects',
           description: `Could not fetch projects from Firestore: ${error.message}`,
           variant: 'destructive',
@@ -89,12 +90,14 @@ export default function GalleryPage() {
 
   useEffect(() => {
     if (toastMessageContent) {
-      toast({
-        title: toastMessageContent.title,
-        description: toastMessageContent.description,
-        variant: toastMessageContent.variant,
-      });
-      setToastMessageContent(null); // Reset after displaying
+      setTimeout(() => {
+        toast({
+          title: toastMessageContent.title,
+          description: toastMessageContent.description,
+          variant: toastMessageContent.variant,
+        });
+        setToastMessageContent(null); // Reset after displaying
+      }, 0);
     }
   }, [toastMessageContent, toast]);
 
@@ -167,8 +170,9 @@ export default function GalleryPage() {
     return categoryMatch && searchMatch;
   }).sort((a, b) => {
     if (sortBy === 'date') {
-      const dateA = a.createdAt ? (typeof a.createdAt === 'string' ? new Date(a.createdAt) : (a.createdAt as any).toDate ? (a.createdAt as any).toDate() : new Date(a.uploadDate)) : new Date(a.uploadDate);
-      const dateB = b.createdAt ? (typeof b.createdAt === 'string' ? new Date(b.createdAt) : (b.createdAt as any).toDate ? (b.createdAt as any).toDate() : new Date(b.uploadDate)) : new Date(b.uploadDate);
+      // Prioritize createdAt if it exists and is a Firestore Timestamp, otherwise use uploadDate
+      const dateA = a.createdAt && (a.createdAt as any).toDate ? (a.createdAt as any).toDate() : new Date(a.uploadDate);
+      const dateB = b.createdAt && (b.createdAt as any).toDate ? (b.createdAt as any).toDate() : new Date(b.uploadDate);
       return dateB.getTime() - dateA.getTime();
     }
     return 0;
@@ -353,4 +357,3 @@ export default function GalleryPage() {
     </div>
   );
 }
-
