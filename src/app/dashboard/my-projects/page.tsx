@@ -77,6 +77,35 @@ export default function MyProjectsPage() {
     });
   };
 
+  // Dummy onLike function for ProjectCard prop on this page
+  const handleLikeProject = (projectId: string) => {
+    toast({
+      title: "Like Action (My Projects)",
+      description: `Project ${projectId} like action triggered. (UI only on this page)`,
+      duration: 3000,
+    });
+    // In a real app, this might not be a feature here, or would update state differently
+    // For consistency with ProjectCard, we provide a handler.
+    setProjects(prevProjects => 
+      prevProjects.map(p => 
+        p.id === projectId ? { ...p, likeCount: (p.likeCount || 0) + 1 } : p
+      )
+    );
+  };
+  
+  // Dummy onViewDetails function if ProjectCard expects it but it's not used here
+  // Or implement modal if needed on this page too
+  const handleViewProjectDetails = (project: Project) => {
+    // For this page, we might redirect or show a different kind of detail view
+    // For now, let's just log or show a simple toast
+    toast({
+      title: "View Details (My Projects)",
+      description: `Viewing details for ${project.title}. (Not fully implemented on this page)`,
+      duration: 3000,
+    });
+    // router.push(`/gallery?project=${project.id}`); // Option: redirect to gallery detail view
+  };
+
 
   if (loadingAuth || isLoadingProjects && user) { // Show loading if auth is loading OR if projects are loading AND user is determined
     return (
@@ -131,6 +160,8 @@ export default function MyProjectsPage() {
               <ProjectCard
                 project={project}
                 animationDelay={`${0.4 + index * 0.05}s`}
+                onLike={handleLikeProject} // Pass the handler here
+                onViewDetails={handleViewProjectDetails} // Pass a handler for onViewDetails as well
               />
               <div className="mt-2 flex gap-2 p-2 border border-t-0 rounded-b-md bg-card">
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditProject(project.id)}>
@@ -147,7 +178,7 @@ export default function MyProjectsPage() {
        <div className="flex items-start gap-2 p-3 mt-8 bg-blue-50 border border-blue-300 rounded-md text-sm text-blue-700 animate-fade-in-up" style={{animationDelay: '0.5s'}}>
           <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <p>
-            <strong>Note on Image Uploads:</strong> Currently, project preview images are linked via URLs. For direct image uploads, Firebase Storage integration would be the next step.
+            <strong>Note on Image Uploads:</strong> Project preview images are uploaded directly. Ensure your Firebase Storage rules are set up to allow writes to the 'project-previews/' path for authenticated users.
           </p>
       </div>
     </div>
