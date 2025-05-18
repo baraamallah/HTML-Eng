@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 
 const CategoryIcon = ({ category, className }: { category: Category, className?: string }) => {
-  const iconProps = { className: className || "w-5 h-5 mr-2" }; // Adjusted default for consistency
+  const iconProps = { className: className || "w-5 h-5" };
   switch (category) {
     case 'Web App': return <Code2 {...iconProps} />;
     case 'Mobile App': return <Smartphone {...iconProps} />;
@@ -55,6 +55,7 @@ export default function GalleryPage() {
       setFetchError(null);
       try {
         const projectsRef = collection(db, 'projects');
+        // Use createdAt for sorting as uploadDate might not always be a Firestore timestamp
         const q = query(projectsRef, orderBy('createdAt', 'desc'));
         
         const querySnapshot = await getDocs(q);
@@ -74,7 +75,8 @@ export default function GalleryPage() {
     };
 
     fetchProjects();
-  }, [toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Removed `toast` from dependencies. `db` is stable.
 
   const handleViewProjectDetails = (project: Project) => {
     setSelectedProject(project);
@@ -102,7 +104,7 @@ export default function GalleryPage() {
     setSelectedProject(null);
   };
   
-  const handleLikeProject = (projectId: string) => {
+ const handleLikeProject = (projectId: string) => {
     setLikedProjectIds(prevLikedIds => {
       const newLikedIds = new Set(prevLikedIds);
       let likeChange = 0;
@@ -141,6 +143,7 @@ export default function GalleryPage() {
     return categoryMatch && searchMatch;
   }).sort((a, b) => {
     if (sortBy === 'date') {
+      // Handle cases where createdAt might be a Firestore Timestamp object or an ISO string
       const dateA = a.createdAt ? (typeof a.createdAt === 'string' ? new Date(a.createdAt) : (a.createdAt as any).toDate ? (a.createdAt as any).toDate() : new Date(a.uploadDate)) : new Date(a.uploadDate);
       const dateB = b.createdAt ? (typeof b.createdAt === 'string' ? new Date(b.createdAt) : (b.createdAt as any).toDate ? (b.createdAt as any).toDate() : new Date(b.uploadDate)) : new Date(b.uploadDate);
       return dateB.getTime() - dateA.getTime();
@@ -158,7 +161,7 @@ export default function GalleryPage() {
       </header>
 
       <div className="flex justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-        <Tabs defaultValue="All" onValueChange={(value) => setActiveCategory(value as Category | 'All')} className="w-full md:w-auto">
+         <Tabs defaultValue="All" onValueChange={(value) => setActiveCategory(value as Category | 'All')} className="w-full md:w-auto">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:inline-flex md:grid-cols-none lg:grid-cols-none gap-1 p-1 bg-muted rounded-lg shadow-inner">
             <TabsTrigger value="All" className="flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/50 transition-colors duration-150 rounded-md">
               <ListFilter className="w-5 h-5"/>All Projects
@@ -259,13 +262,13 @@ export default function GalleryPage() {
                 Category: {selectedProject.category}
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-grow overflow-y-auto space-y-6 p-1 pr-3">
+            <div className="flex-grow overflow-y-auto space-y-6 p-1 pr-3"> {/* Added p-1 pr-3 for scrollbar spacing */}
               <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-2xl mt-2 bg-muted">
                 <Image
                   src={modalImageUrl}
                   alt={selectedProject.title}
                   layout="fill"
-                  objectFit="contain"
+                  objectFit="contain" // Changed from cover for better preview of various aspect ratios
                   data-ai-hint={selectedProject.dataAiHint || "project details"}
                   onError={() => { setModalImageUrl(FALLBACK_MODAL_IMAGE_URL); }}
                   unoptimized={!ALLOWED_MODAL_HOSTNAMES.some(host => modalImageUrl.startsWith(`https://${host}`))}
