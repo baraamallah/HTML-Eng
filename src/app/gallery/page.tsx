@@ -64,11 +64,17 @@ export default function GalleryPage() {
       setToastMessageContent(null); 
       try {
         const projectsRef = collection(db, 'projects');
-        // Use createdAt for more reliable Firestore ordering if available, otherwise uploadDate
         const q = query(projectsRef, orderBy('createdAt', 'desc')); 
         
         const querySnapshot = await getDocs(q);
-        const fetchedProjects = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+        const fetchedProjects = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return { 
+            id: doc.id, 
+            ...data, 
+            likeCount: data.likeCount || 0 // Ensure likeCount is a number, defaulting to 0
+          } as Project;
+        });
         setAllProjects(fetchedProjects);
       } catch (error: any) {
         console.error("Error fetching projects: ", error);
@@ -85,12 +91,11 @@ export default function GalleryPage() {
     };
 
     fetchProjects();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   useEffect(() => {
     if (toastMessageContent) {
-      setTimeout(() => {
+      setTimeout(() => { // Defer toast to next tick
         toast({
           title: toastMessageContent.title,
           description: toastMessageContent.description,
@@ -170,7 +175,6 @@ export default function GalleryPage() {
     return categoryMatch && searchMatch;
   }).sort((a, b) => {
     if (sortBy === 'date') {
-      // Prioritize createdAt if it exists and is a Firestore Timestamp, otherwise use uploadDate
       const dateA = a.createdAt && (a.createdAt as any).toDate ? (a.createdAt as any).toDate() : new Date(a.uploadDate);
       const dateB = b.createdAt && (b.createdAt as any).toDate ? (b.createdAt as any).toDate() : new Date(b.uploadDate);
       return dateB.getTime() - dateA.getTime();

@@ -40,7 +40,14 @@ export default function MyProjectsPage() {
       const projectsRef = collection(db, 'projects');
       const q = query(projectsRef, where('creatorId', '==', uid), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      const userProjects = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+      const userProjects = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          likeCount: data.likeCount || 0 // Ensure likeCount is a number, defaulting to 0
+        } as Project;
+      });
       setProjects(userProjects);
     } catch (error: any) {
       console.error("Error fetching user projects: ", error);
