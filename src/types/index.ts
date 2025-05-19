@@ -16,7 +16,7 @@ export interface Project {
   isFeatured?: boolean;
   projectUrl?: string; // Link to live project, repo, or Figma file
   techStack?: string[]; // Technologies used
-  likeCount?: number; // Number of likes
+  likeCount: number; // Number of likes - now required
 }
 
 export interface Creator {
@@ -32,12 +32,7 @@ export interface Creator {
   personalWebsite?: string; // Full URL
 }
 
-export interface ProjectChallenge {
-  id: string;
-  title: string;
-  description: string;
-  endDate: string; // ISO string
-}
+// ProjectChallenge removed as section was removed
 
 export interface SiteSettings {
   siteTitle: string;

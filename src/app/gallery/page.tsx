@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Added Card imports
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid, Loader2, AlertCircle, ExternalLink, UserCircle, Github, Heart } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, doc, updateDoc, increment } from 'firebase/firestore';
@@ -34,6 +34,7 @@ const CategoryIcon = ({ category, className }: { category: Category, className?:
 };
 
 const FALLBACK_MODAL_IMAGE_URL = 'https://placehold.co/800x450.png?text=Preview+Error';
+const FALLBACK_CARD_IMAGE_URL = 'https://placehold.co/300x200.png?text=No+Preview';
 const ALLOWED_MODAL_HOSTNAMES = ['placehold.co', 'firebasestorage.googleapis.com'];
 
 interface ToastMessage {
@@ -52,7 +53,7 @@ export default function GalleryPage() {
 
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date'>('date');
+  const [sortBy, setSortBy] = useState<'date'>('date'); // Only 'date' sort is functional
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -67,10 +68,11 @@ export default function GalleryPage() {
       try {
         const projectsRef = collection(db, 'projects');
         let q;
+        // Assuming 'createdAt' field exists and is a Firestore Timestamp
         if (sortBy === 'date') {
           q = query(projectsRef, orderBy('createdAt', 'desc'));
         } else {
-          q = query(projectsRef); // Default query if no specific sort
+          q = query(projectsRef); 
         }
         
         const querySnapshot = await getDocs(q);
@@ -78,18 +80,30 @@ export default function GalleryPage() {
           const data = doc.data();
           return {
             id: doc.id,
-            ...data,
-            likeCount: data.likeCount || 0
+            title: data.title || "Untitled Project",
+            description: data.description || "No description provided.",
+            tags: Array.isArray(data.tags) ? data.tags : [],
+            previewImageUrl: data.previewImageUrl || FALLBACK_CARD_IMAGE_URL,
+            dataAiHint: data.dataAiHint || "project preview",
+            category: data.category || "Web App", // Default category
+            creatorId: data.creatorId || "unknown_creator",
+            creatorName: data.creatorName || "Unknown Creator",
+            uploadDate: data.uploadDate || new Date().toISOString(),
+            isFeatured: data.isFeatured || false,
+            projectUrl: data.projectUrl || "",
+            techStack: Array.isArray(data.techStack) ? data.techStack : [],
+            likeCount: typeof data.likeCount === 'number' ? data.likeCount : 0,
+            createdAt: data.createdAt || null, // Handle if createdAt is missing
           } as Project;
         });
         setAllProjects(fetchedProjects);
       } catch (error: any) {
         console.error("Error fetching projects: ", error);
-        const errorMessage = `Failed to load projects: ${error.message}. Please try again later.`;
+        const errorMessage = `Failed to load projects: ${error.message}. Please check Firestore rules or network.`;
         setFetchError(errorMessage);
         setToastMessageContent({
           title: 'Error Loading Projects',
-          description: `Could not fetch projects from Firestore: ${error.message}`,
+          description: errorMessage,
           variant: 'destructive',
         });
       } finally {
@@ -100,7 +114,7 @@ export default function GalleryPage() {
     fetchProjects();
   }, [sortBy]);
 
-  useEffect(() => {
+   useEffect(() => {
     if (toastMessageContent) {
       setTimeout(() => { // Defer toast call
         toast({
@@ -108,7 +122,7 @@ export default function GalleryPage() {
           description: toastMessageContent.description,
           variant: toastMessageContent.variant,
         });
-        setToastMessageContent(null);
+        setToastMessageContent(null); // Reset after showing
       }, 0);
     }
   }, [toastMessageContent, toast]);
@@ -117,7 +131,7 @@ export default function GalleryPage() {
   const handleViewProjectDetails = (project: Project) => {
     setSelectedProject(project);
     let imageUrlToUseInModal = FALLBACK_MODAL_IMAGE_URL;
-    if (project.previewImageUrl) {
+    if (project.previewImageUrl && project.previewImageUrl !== FALLBACK_CARD_IMAGE_URL) {
       try {
         const url = new URL(project.previewImageUrl);
         if (ALLOWED_MODAL_HOSTNAMES.includes(url.hostname)) {
@@ -157,24 +171,22 @@ export default function GalleryPage() {
     const newLikedIds = new Set(likedProjectIds);
     if (newLikedIds.has(projectId)) {
       newLikedIds.delete(projectId);
-      likeChange = -1;
+      likeChange = -1; // Decrement
       toastTitle = "Project Unliked";
       toastDescription = "Your unlike has been recorded.";
     } else {
       newLikedIds.add(projectId);
-      likeChange = 1;
+      likeChange = 1; // Increment
       toastTitle = "Project Liked!";
       toastDescription = "Thanks for your feedback!";
     }
     setLikedProjectIds(newLikedIds);
 
-    // Optimistic UI update for the project list
     setAllProjects(prevProjects =>
       prevProjects.map(p =>
         p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
       )
     );
-    // Optimistic UI update for the selected project in modal
     if (selectedProject && selectedProject.id === projectId) {
       setSelectedProject(prev => prev ? { ...prev, likeCount: Math.max(0, (prev.likeCount || 0) + likeChange) } : null);
     }
@@ -183,7 +195,7 @@ export default function GalleryPage() {
       await updateDoc(projectRef, {
         likeCount: increment(likeChange)
       });
-      toast({ title: toastTitle, description: `${toastDescription}`, duration: 2000 });
+      toast({ title: toastTitle, description: `${toastDescription} Like count updated.`, duration: 2000 });
     } catch (error: any) {
       console.error("Error updating like count: ", error);
       toast({
@@ -193,8 +205,8 @@ export default function GalleryPage() {
       });
       // Revert optimistic UI update on error
       const revertedLikedIds = new Set(likedProjectIds);
-      if (likeChange === 1) revertedLikedIds.delete(projectId);
-      else if (likeChange === -1) revertedLikedIds.add(projectId);
+      if (likeChange === 1) revertedLikedIds.delete(projectId); // Was an add, so remove
+      else if (likeChange === -1) revertedLikedIds.add(projectId); // Was a remove, so add back
       setLikedProjectIds(revertedLikedIds);
 
       setAllProjects(prevProjects =>
@@ -217,7 +229,6 @@ export default function GalleryPage() {
       project.techStack?.some(tech => tech.toLowerCase().includes(searchTerm.toLowerCase()));
     return categoryMatch && searchMatch;
   });
-  // No client-side sort applied here, relying on Firestore orderBy
 
   return (
     <div className="space-y-10">
@@ -261,7 +272,6 @@ export default function GalleryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="date" className="flex items-center text-base py-2"><CalendarDays className="w-4 h-4 mr-2" />Most Recent</SelectItem>
-            {/* Add other sort options like "popularity" if implemented */}
           </SelectContent>
         </Select>
       </div>
@@ -379,7 +389,7 @@ export default function GalleryPage() {
                 <Button variant="ghost" size="icon" onClick={() => handleLikeProject(selectedProject.id)} className="group">
                   <Heart className={`w-6 h-6 transition-all duration-150 ease-in-out group-hover:text-destructive ${likedProjectIds.has(selectedProject.id) ? 'fill-destructive text-destructive' : 'text-destructive/70'}`}/>
                 </Button>
-                <span className="text-lg text-muted-foreground">{(selectedProject.likeCount || 0).toLocaleString()} Likes</span>
+                <span className="text-lg text-muted-foreground">{selectedProject.likeCount.toLocaleString()} Likes</span>
               </div>
               <div className="flex gap-2">
                 {selectedProject.projectUrl && (

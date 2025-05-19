@@ -11,10 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 import type { Creator as CreatorType, Project as ProjectType, SiteSettings } from '@/types';
-import { Settings, UserCog, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle, Info, XCircle, UserPlus, Trash2, ShieldCheck, Loader2, Heart } from 'lucide-react'; // Added Heart
+import { Settings, UserCog, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Server, AlertTriangle, Info, XCircle, UserPlus, Trash2, ShieldCheck, Loader2, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
-import { signOut, onAuthStateChanged, type User } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_SITE_SETTINGS } from '@/lib/constants';
 import Link from 'next/link';
@@ -23,8 +23,10 @@ const ADMIN_UID = "Jiz18K1A6xewOuEnSGPb1ybZkUF3";
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Initialize state with mock data as a baseline
@@ -34,7 +36,7 @@ export default function AdminSettingsPage() {
   const [aboutPageContent, setAboutPageContent] = useState(MOCK_SITE_SETTINGS.aboutPageContent);
   
   const [creators, setCreators] = useState<CreatorType[]>(MOCK_CREATORS);
-  const [projects, setProjects] = useState<ProjectType[]>(MOCK_PROJECTS); // Show all mock projects initially
+  const [projects, setProjects] = useState<ProjectType[]>(MOCK_PROJECTS);
 
   const [creatorForm, setCreatorForm] = useState<Partial<CreatorType>>({
     name: '',
@@ -58,6 +60,7 @@ export default function AdminSettingsPage() {
           fetchAdminData(user);
         } else {
           setIsAdmin(false);
+          toast({ title: 'Access Denied', description: 'This account is not authorized for admin access.', variant: 'destructive' });
         }
       } else {
         setIsAdmin(false);
@@ -76,6 +79,20 @@ export default function AdminSettingsPage() {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsLoadingAuth(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: 'Login Successful', description: 'Welcome, Admin!' });
+      // onAuthStateChanged will handle fetching data
+    } catch (error: any) {
+      toast({ title: 'Login Failed', description: error.message, variant: 'destructive' });
+      setIsAdmin(false); // Ensure isAdmin is false on failed login
+      setIsLoadingAuth(false);
+    }
+  };
 
   const fetchAdminData = async (loggedInUser: User) => {
     if (!loggedInUser || loggedInUser.uid !== ADMIN_UID) {
@@ -107,7 +124,6 @@ export default function AdminSettingsPage() {
         siteSettingsLoaded = true;
       } else {
          toast({ title: 'Site Settings Info', description: 'No settings found in Firestore. Displaying local defaults. Save to create.', variant: 'default' });
-         // Keep mock data already set in state
       }
 
       // Fetch Creators
@@ -117,7 +133,7 @@ export default function AdminSettingsPage() {
         setCreators(firestoreCreators);
         creatorsLoadedFromFirestore = true;
       } else {
-         setCreators(MOCK_CREATORS); // Fallback to mock if Firestore is empty
+         setCreators(MOCK_CREATORS); 
          if (MOCK_CREATORS.length > 0) {
             toast({ title: 'Creators Info', description: 'No creators found in Firestore. Displaying local mock creators.', variant: 'default' });
          } else {
@@ -127,12 +143,24 @@ export default function AdminSettingsPage() {
 
       // Fetch Projects
       const projectsSnapshot = await getDocs(collection(db, 'projects'));
-      const firestoreProjects = projectsSnapshot.docs.map(pDoc => ({ id: pDoc.id, ...pDoc.data() } as ProjectType));
+      const firestoreProjects = projectsSnapshot.docs.map(pDoc => {
+        const data = pDoc.data();
+        return { 
+            id: pDoc.id, 
+            ...data,
+            title: data.title || "Untitled Project",
+            creatorName: data.creatorName || "Unknown Creator",
+            creatorId: data.creatorId || "unknown_creator",
+            projectUrl: data.projectUrl || "",
+            techStack: Array.isArray(data.techStack) ? data.techStack : [],
+            likeCount: typeof data.likeCount === 'number' ? data.likeCount : 0,
+        } as ProjectType;
+      });
       if (firestoreProjects.length > 0) {
         setProjects(firestoreProjects); 
         projectsLoadedFromFirestore = true;
       } else {
-        setProjects(MOCK_PROJECTS); // Fallback to mock
+        setProjects(MOCK_PROJECTS); 
         if (MOCK_PROJECTS.length > 0) {
           toast({ title: 'Projects Info', description: 'No projects found in Firestore. Displaying local mock projects.', variant: 'default' });
         } else {
@@ -160,7 +188,6 @@ export default function AdminSettingsPage() {
     } catch (error: any) {
       console.error("Error fetching admin data from Firestore: ", error);
       toast({ title: 'Firestore Error', description: `Could not load data: ${error.message}. Displaying local mock data.`, variant: 'destructive' });
-      // Ensure mock data is set on error
       setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
       setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
       setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
@@ -177,7 +204,8 @@ export default function AdminSettingsPage() {
       toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
     } catch (error: any) {      
       toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
-      setIsLoadingAuth(false);
+    } finally {
+        setIsLoadingAuth(false); // Ensure this is set in finally
     }
   };
 
@@ -338,7 +366,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  if (isLoadingAuth) {
+  if (isLoadingAuth && !currentUser) { // Show loading only if no user yet
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="mx-auto h-12 w-12 text-primary mb-3 animate-spin" />
@@ -353,17 +381,44 @@ export default function AdminSettingsPage() {
         <Card className="w-full max-w-md shadow-2xl">
           <CardHeader className="text-center">
             <KeyRound className="mx-auto h-12 w-12 text-primary mb-3" />
-            <CardTitle className="text-2xl">Admin Access Required</CardTitle>
-            <CardDescription>Please log in with an admin account to manage site settings.</CardDescription>
+            <CardTitle className="text-2xl">Admin Login</CardTitle>
+            <CardDescription>Please login with your admin credentials.</CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
-            <Button asChild>
-              <Link href="/login?redirect=/admin/settings">Go to Login</Link>
-            </Button>
-             <p className="text-xs text-muted-foreground mt-4">
-              Ensure you are logged in with the Firebase user account designated as admin (UID: {ADMIN_UID.substring(0,10)+'...'})
-            </p>
-          </CardContent>
+          <form onSubmit={handleLogin}>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="admin-email">Email</Label>
+                <Input
+                  id="admin-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="admin-password">Password</Label>
+                <Input
+                  id="admin-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col">
+              <Button type="submit" className="w-full" disabled={isLoadingAuth}>
+                {isLoadingAuth ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Login
+              </Button>
+               <p className="text-xs text-muted-foreground mt-4 text-center">
+                Ensure you are using the Firebase user account designated as admin (UID: {ADMIN_UID.substring(0,10)+'...'})
+              </p>
+            </CardFooter>
+          </form>
         </Card>
       </div>
     );
@@ -554,7 +609,7 @@ export default function AdminSettingsPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
-                <div className="flex items-start gap-3 p-4 mb-4 bg-primary/10 border-2 border-primary/30 rounded-lg text-sm text-primary-foreground shadow">
+                <div className="flex items-start gap-3 p-4 mb-4 bg-primary/10 border-2 border-primary/30 rounded-lg text-sm text-primary-foreground shadow"> {/* Updated text color */}
                   <Info className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
                   <p>Projects are added via the "Share Project" page by logged-in users. Below you can view and delete projects. Full project editing is a placeholder and would typically involve a dedicated editing form.</p>
                 </div>
@@ -566,7 +621,7 @@ export default function AdminSettingsPage() {
                                 <div>
                                     <p className="font-semibold text-primary">{project.title} <span className="text-xs text-muted-foreground">(ID: {project.id.substring(0,6)}...)</span></p>
                                     <p className="text-sm text-muted-foreground">By {project.creatorName} (CreatorID: {project.creatorId.substring(0,6)}...)</p>
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="h-3 w-3 text-destructive/80"/> {(project.likeCount || 0).toLocaleString()} likes</p>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="h-3 w-3 text-destructive/80"/> {project.likeCount.toLocaleString()} likes</p>
                                 </div>
                                 <div className="space-x-2">
                                   <Button variant="outline" size="sm" onClick={() => handleEditProject(project.id)}>

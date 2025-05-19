@@ -127,7 +127,7 @@ export default function UploadPage() {
       reader.readAsDataURL(file);
     } else {
       setImagePreview(null);
-      form.setValue('previewImageFile', undefined); // Use undefined as per schema
+      form.setValue('previewImageFile', undefined); 
     }
   };
 
@@ -156,7 +156,6 @@ export default function UploadPage() {
         return;
       }
     } else {
-      // This case should ideally be prevented by form validation, but as a safeguard:
       toast({ title: "Missing Image", description: "Preview image is required.", variant: "destructive" });
       setIsSubmitting(false);
       return;
@@ -176,16 +175,16 @@ export default function UploadPage() {
       techStack: data.techStack ? data.techStack.split(',').map(tech => tech.trim()).filter(tech => tech) : [],
       creatorId: user.uid,
       creatorName: user.displayName || user.email || 'Anonymous Creator',
-      uploadDate: new Date().toISOString(), // Keep for potential legacy use or display
-      isFeatured: false, // Default
+      uploadDate: new Date().toISOString(),
+      isFeatured: false,
       dataAiHint: generateDataAiHint(data.title),
-      createdAt: serverTimestamp(), // For Firestore ordering
+      createdAt: serverTimestamp(),
       likeCount: 0, // Initialize like count
     };
 
     try {
       toast({ title: "Submitting Project...", description: "Saving details to database." });
-      const docRef = await addDoc(collection(db, 'projects'), projectDataToSave);
+      await addDoc(collection(db, 'projects'), projectDataToSave);
       toast({
         title: 'Project Submitted!',
         description: `"${data.title}" has been successfully shared.`,
@@ -260,9 +259,9 @@ export default function UploadPage() {
            <Card className="shadow-xl animate-fade-in-up border-2 border-primary/20" style={{ animationDelay: '0.2s' }}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-3"><ImagePlus className="text-primary w-8 h-8"/>Project Information & Preview Image</CardTitle>
-              <CardDescription>Provide the main details for your project and upload its preview image.</CardDescription>
+              <CardDescription>Provide the main details for your project and upload its preview image directly.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6"> {/* Increased spacing */}
+            <CardContent className="space-y-6">
                <div>
                 <Label htmlFor="title" className="text-base">Project Title</Label>
                 <Input id="title" {...form.register('title')} className="h-11 text-base mt-1" />
