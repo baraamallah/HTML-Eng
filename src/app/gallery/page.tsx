@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type SetStateAction } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ProjectCard } from '@/components/project-card';
@@ -13,10 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Added Card imports
 import { ListFilter, Code2, Smartphone, DraftingCompass, FileJson, GitFork, CalendarDays, Search, LayoutGrid, Loader2, AlertCircle, ExternalLink, UserCircle, Github, Heart } from 'lucide-react';
-import { auth, db } from '@/lib/firebase'; // Added auth
-import { collection, getDocs, query, orderBy, doc, updateDoc, increment } from 'firebase/firestore'; // Added doc, updateDoc, increment
-import { useAuthState } from 'react-firebase-hooks/auth'; // Added useAuthState
+import { auth, db } from '@/lib/firebase';
+import { collection, getDocs, query, orderBy, doc, updateDoc, increment } from 'firebase/firestore';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import { useToast } from '@/hooks/use-toast';
 import { BrushStrokeDivider } from '@/components/icons/brush-stroke-divider';
 
@@ -42,7 +43,7 @@ interface ToastMessage {
 }
 
 export default function GalleryPage() {
-  const [user] = useAuthState(auth); // Get current user
+  const [user] = useAuthState(auth);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -65,7 +66,12 @@ export default function GalleryPage() {
       setToastMessageContent(null);
       try {
         const projectsRef = collection(db, 'projects');
-        const q = query(projectsRef, orderBy('createdAt', 'desc'));
+        let q;
+        if (sortBy === 'date') {
+          q = query(projectsRef, orderBy('createdAt', 'desc'));
+        } else {
+          q = query(projectsRef); // Default query if no specific sort
+        }
         
         const querySnapshot = await getDocs(q);
         const fetchedProjects = querySnapshot.docs.map(doc => {
@@ -92,11 +98,11 @@ export default function GalleryPage() {
     };
 
     fetchProjects();
-  }, []);
+  }, [sortBy]);
 
   useEffect(() => {
     if (toastMessageContent) {
-      setTimeout(() => {
+      setTimeout(() => { // Defer toast call
         toast({
           title: toastMessageContent.title,
           description: toastMessageContent.description,
@@ -144,12 +150,10 @@ export default function GalleryPage() {
     }
 
     const projectRef = doc(db, "projects", projectId);
-    let newLikeCount = 0;
     let likeChange = 0;
     let toastTitle = "";
     let toastDescription = "";
 
-    // Optimistically update UI
     const newLikedIds = new Set(likedProjectIds);
     if (newLikedIds.has(projectId)) {
       newLikedIds.delete(projectId);
@@ -164,18 +168,15 @@ export default function GalleryPage() {
     }
     setLikedProjectIds(newLikedIds);
 
-    const projectIndex = allProjects.findIndex(p => p.id === projectId);
-    if (projectIndex !== -1) {
-      const updatedProjects = [...allProjects];
-      const currentProject = updatedProjects[projectIndex];
-      const optimisticLikeCount = Math.max(0, (currentProject.likeCount || 0) + likeChange);
-      updatedProjects[projectIndex] = { ...currentProject, likeCount: optimisticLikeCount };
-      setAllProjects(updatedProjects);
-
-      if (selectedProject && selectedProject.id === projectId) {
-        setSelectedProject(prev => prev ? { ...prev, likeCount: optimisticLikeCount } : null);
-      }
-      newLikeCount = optimisticLikeCount; // For the toast message
+    // Optimistic UI update for the project list
+    setAllProjects(prevProjects =>
+      prevProjects.map(p =>
+        p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
+      )
+    );
+    // Optimistic UI update for the selected project in modal
+    if (selectedProject && selectedProject.id === projectId) {
+      setSelectedProject(prev => prev ? { ...prev, likeCount: Math.max(0, (prev.likeCount || 0) + likeChange) } : null);
     }
     
     try {
@@ -183,8 +184,6 @@ export default function GalleryPage() {
         likeCount: increment(likeChange)
       });
       toast({ title: toastTitle, description: `${toastDescription}`, duration: 2000 });
-      // Optionally, re-fetch the specific project or all projects to get the exact count from DB
-      // For now, optimistic update is fine for like counts.
     } catch (error: any) {
       console.error("Error updating like count: ", error);
       toast({
@@ -194,17 +193,17 @@ export default function GalleryPage() {
       });
       // Revert optimistic UI update on error
       const revertedLikedIds = new Set(likedProjectIds);
-      if (likeChange === 1) revertedLikedIds.delete(projectId); // Was liked, now remove
-      else if (likeChange === -1) revertedLikedIds.add(projectId); // Was unliked, now add back
+      if (likeChange === 1) revertedLikedIds.delete(projectId);
+      else if (likeChange === -1) revertedLikedIds.add(projectId);
       setLikedProjectIds(revertedLikedIds);
 
-      if (projectIndex !== -1) {
-         const revertedProjects = [...allProjects];
-         revertedProjects[projectIndex] = { ...revertedProjects[projectIndex], likeCount: Math.max(0, (revertedProjects[projectIndex].likeCount || 0) - likeChange) };
-         setAllProjects(revertedProjects);
-         if (selectedProject && selectedProject.id === projectId) {
-            setSelectedProject(prev => prev ? { ...prev, likeCount: Math.max(0, (prev.likeCount || 0) - likeChange) } : null);
-         }
+      setAllProjects(prevProjects =>
+        prevProjects.map(p =>
+          p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) - likeChange) } : p
+        )
+      );
+      if (selectedProject && selectedProject.id === projectId) {
+        setSelectedProject(prev => prev ? { ...prev, likeCount: Math.max(0, (prev.likeCount || 0) - likeChange) } : null);
       }
     }
   };
@@ -217,14 +216,8 @@ export default function GalleryPage() {
       project.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
       project.techStack?.some(tech => tech.toLowerCase().includes(searchTerm.toLowerCase()));
     return categoryMatch && searchMatch;
-  }).sort((a, b) => {
-    if (sortBy === 'date') {
-      const dateA = a.createdAt && (a.createdAt as any).toDate ? (a.createdAt as any).toDate() : new Date(a.uploadDate);
-      const dateB = b.createdAt && (b.createdAt as any).toDate ? (b.createdAt as any).toDate() : new Date(b.uploadDate);
-      return dateB.getTime() - dateA.getTime();
-    }
-    return 0;
   });
+  // No client-side sort applied here, relying on Firestore orderBy
 
   return (
     <div className="space-y-10">
@@ -268,6 +261,7 @@ export default function GalleryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="date" className="flex items-center text-base py-2"><CalendarDays className="w-4 h-4 mr-2" />Most Recent</SelectItem>
+            {/* Add other sort options like "popularity" if implemented */}
           </SelectContent>
         </Select>
       </div>
