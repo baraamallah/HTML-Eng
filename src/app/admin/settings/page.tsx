@@ -15,7 +15,7 @@ import { Settings, UserCog, Edit3, Save, ListChecks, Globe, LogOut, KeyRound, Se
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from 'firebase/auth';
-import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, writeBatch, query, where, serverTimestamp } from 'firebase/firestore';
 import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_SITE_SETTINGS } from '@/lib/constants';
 import Link from 'next/link';
 
@@ -128,7 +128,18 @@ export default function AdminSettingsPage() {
 
       // Fetch Creators
       const creatorsSnapshot = await getDocs(collection(db, 'creators'));
-      const firestoreCreators = creatorsSnapshot.docs.map(cDoc => ({ id: cDoc.id, ...cDoc.data() } as CreatorType));
+      const firestoreCreators = creatorsSnapshot.docs.map(cDoc => ({ 
+          id: cDoc.id, 
+          name: cDoc.data().name || "Unnamed Creator",
+          photoUrl: cDoc.data().photoUrl || `https://placehold.co/200x200.png?text=User`,
+          dataAiHint: cDoc.data().dataAiHint || "creator photo",
+          bio: cDoc.data().bio || "",
+          location: cDoc.data().location || "",
+          githubUsername: cDoc.data().githubUsername || "",
+          linkedInProfile: cDoc.data().linkedInProfile || "",
+          personalWebsite: cDoc.data().personalWebsite || "",
+          statement: cDoc.data().statement || "",
+        } as CreatorType));
       if (firestoreCreators.length > 0) {
         setCreators(firestoreCreators);
         creatorsLoadedFromFirestore = true;
@@ -147,13 +158,20 @@ export default function AdminSettingsPage() {
         const data = pDoc.data();
         return { 
             id: pDoc.id, 
-            ...data,
             title: data.title || "Untitled Project",
-            creatorName: data.creatorName || "Unknown Creator",
+            description: data.description || "",
+            tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
+            previewImageUrl: data.previewImageUrl || `https://placehold.co/300x200.png?text=No+Preview`,
+            dataAiHint: data.dataAiHint || "project preview",
+            category: (CATEGORIES.includes(data.category) ? data.category : 'Web App') as Category,
             creatorId: data.creatorId || "unknown_creator",
+            creatorName: data.creatorName || "Unknown Creator",
+            uploadDate: data.uploadDate || new Date().toISOString(),
+            isFeatured: data.isFeatured || false,
             projectUrl: data.projectUrl || "",
-            techStack: Array.isArray(data.techStack) ? data.techStack : [],
+            techStack: Array.isArray(data.techStack) ? data.techStack.filter(Boolean) : [],
             likeCount: typeof data.likeCount === 'number' ? data.likeCount : 0,
+            createdAt: data.createdAt || null, // Handle if createdAt is missing
         } as ProjectType;
       });
       if (firestoreProjects.length > 0) {
@@ -205,7 +223,7 @@ export default function AdminSettingsPage() {
     } catch (error: any) {      
       toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
     } finally {
-        setIsLoadingAuth(false); // Ensure this is set in finally
+        setIsLoadingAuth(false); 
     }
   };
 
@@ -366,7 +384,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  if (isLoadingAuth && !currentUser) { // Show loading only if no user yet
+  if (isLoadingAuth && !currentUser) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="mx-auto h-12 w-12 text-primary mb-3 animate-spin" />
@@ -609,7 +627,7 @@ export default function AdminSettingsPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-6 pt-0">
-                <div className="flex items-start gap-3 p-4 mb-4 bg-primary/10 border-2 border-primary/30 rounded-lg text-sm text-primary-foreground shadow"> {/* Updated text color */}
+                <div className="flex items-start gap-3 p-4 mb-4 bg-primary/10 border-2 border-primary/30 rounded-lg text-sm text-primary-foreground shadow"> 
                   <Info className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
                   <p>Projects are added via the "Share Project" page by logged-in users. Below you can view and delete projects. Full project editing is a placeholder and would typically involve a dedicated editing form.</p>
                 </div>

@@ -32,13 +32,13 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gi
 const projectSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().optional(),
-  tags: z.string().optional(),
+  tags: z.string().optional(), // Comma-separated string
   category: z.enum(CATEGORIES, { required_error: 'Please select a category' }),
   previewImageFile: z.instanceof(File, { message: "Please upload a preview image." })
     .refine(file => file.size <= MAX_FILE_SIZE_BYTES, `Max file size is ${MAX_FILE_SIZE_MB}MB.`)
     .refine(file => ACCEPTED_IMAGE_TYPES.includes(file.type), "Only .jpg, .png, .webp, .gif formats are supported."),
   projectUrl: z.string().url({ message: "Please enter a valid URL (e.g., GitHub, live demo)" }).optional().or(z.literal('')),
-  techStack: z.string().optional(),
+  techStack: z.string().optional(), // Comma-separated string
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -90,7 +90,7 @@ export default function UploadPage() {
   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
-        const { previewImageFile, ...restOfValue } = value;
+        const { previewImageFile, ...restOfValue } = value; // Exclude file object from localStorage
         localStorage.setItem('uploadFormDraft', JSON.stringify(restOfValue));
       } catch (error) {
         console.warn("Could not save draft to localStorage:", error);
@@ -106,7 +106,7 @@ export default function UploadPage() {
         if (draft) {
           const parsedDraft = JSON.parse(draft) as Omit<ProjectFormData, 'previewImageFile'>;
           if (Object.keys(parsedDraft).length > 0) {
-            form.reset(parsedDraft);
+            form.reset(parsedDraft); // Reset form with draft values
           }
         }
       } catch (error) {
@@ -114,7 +114,7 @@ export default function UploadPage() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user]); // form.reset dependency removed to avoid loop
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -127,7 +127,7 @@ export default function UploadPage() {
       reader.readAsDataURL(file);
     } else {
       setImagePreview(null);
-      form.setValue('previewImageFile', undefined); 
+      form.setValue('previewImageFile', undefined , { shouldValidate: true }); 
     }
   };
 
@@ -137,35 +137,35 @@ export default function UploadPage() {
       router.push('/login?redirect=/upload');
       return;
     }
-    setIsSubmitting(true);
-
-    let uploadedImageUrl = '';
-
-    if (data.previewImageFile) {
-      const file = data.previewImageFile;
-      const storageRef = ref(storage, `project-previews/${user.uid}/${Date.now()}_${file.name}`);
-      try {
-        toast({ title: "Uploading Image...", description: "Please wait." });
-        const snapshot = await uploadBytes(storageRef, file);
-        uploadedImageUrl = await getDownloadURL(snapshot.ref);
-        toast({ title: "Image Uploaded", description: "Preview image saved to Firebase Storage." });
-      } catch (e: any) {
-        console.error("Error uploading image: ", e);
-        toast({ title: "Image Upload Failed", description: `Could not upload image: ${e.message}`, variant: "destructive" });
-        setIsSubmitting(false);
-        return;
-      }
-    } else {
-      toast({ title: "Missing Image", description: "Preview image is required.", variant: "destructive" });
+    if (!data.previewImageFile) {
+      toast({ title: "Missing Preview Image", description: "Please upload a preview image for your project.", variant: "destructive" });
+      form.setError("previewImageFile", { type: "manual", message: "Preview image is required." });
       setIsSubmitting(false);
       return;
     }
+    
+    setIsSubmitting(true);
+    let uploadedImageUrl = '';
+    const file = data.previewImageFile;
 
+    const storageRef = ref(storage, `project-previews/${user.uid}/${Date.now()}_${file.name}`);
+    try {
+      toast({ title: "Uploading Image...", description: "Please wait." });
+      const snapshot = await uploadBytes(storageRef, file);
+      uploadedImageUrl = await getDownloadURL(snapshot.ref);
+      toast({ title: "Image Uploaded", description: "Preview image saved to Firebase Storage." });
+    } catch (e: any) {
+      console.error("Error uploading image: ", e);
+      toast({ title: "Image Upload Failed", description: `Could not upload image: ${e.message}`, variant: "destructive" });
+      setIsSubmitting(false);
+      return;
+    }
+    
     const generateDataAiHint = (title: string): string => {
       return title.toLowerCase().split(' ').slice(0, 2).join(' ') || 'project image';
     };
 
-    const projectDataToSave: Omit<Project, 'id'> & { createdAt: any } = {
+    const projectDataToSave: Omit<Project, 'id'> = {
       title: data.title,
       description: data.description || '',
       tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
@@ -179,7 +179,7 @@ export default function UploadPage() {
       isFeatured: false,
       dataAiHint: generateDataAiHint(data.title),
       createdAt: serverTimestamp(),
-      likeCount: 0, // Initialize like count
+      likeCount: 0,
     };
 
     try {
@@ -188,7 +188,7 @@ export default function UploadPage() {
       toast({
         title: 'Project Submitted!',
         description: `"${data.title}" has been successfully shared.`,
-        className: "bg-green-100 border-green-400 text-green-800"
+        className: "bg-green-100 border-green-400 text-green-800" // Example of custom toast styling
       });
       form.reset();
       setImagePreview(null);
@@ -379,7 +379,7 @@ export default function UploadPage() {
                         <p><strong>Category:</strong> {form.getValues('category')}</p>
                         {imagePreview &&
                             <div className='my-3'>
-                                <p className="font-medium mb-1"><strong>Preview Image:</strong></p>
+                                <p className="font-medium mb-1"><strong>Preview Image (to be uploaded):</strong></p>
                                 <Image
                                   src={imagePreview}
                                   alt="Project preview"
@@ -394,6 +394,12 @@ export default function UploadPage() {
                         {form.getValues('tags') && <p><strong>Tags:</strong> {form.getValues('tags')}</p>}
                         {form.getValues('description') && <p className="mt-2"><strong>Description:</strong><br/><span className="text-muted-foreground whitespace-pre-line line-clamp-4">{form.getValues('description')}</span></p>}
                         <p className="pt-2"><strong>Creator:</strong> {user?.displayName || user?.email}</p>
+                    </div>
+                     <div className="flex items-start gap-2 p-3 mt-4 bg-blue-50 border border-blue-300 rounded-md text-sm text-blue-700">
+                        <UploadCloud className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                        <p>
+                            Upon submission, your selected preview image will be uploaded to secure cloud storage. Ensure your Firebase Storage rules allow writes for authenticated users (e.g., under 'project-previews/[YOUR_USER_ID]').
+                        </p>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-between pt-4">

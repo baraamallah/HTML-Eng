@@ -53,7 +53,7 @@ export default function GalleryPage() {
 
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date'>('date'); // Only 'date' sort is functional
+  const [sortBy, setSortBy] = useState<'date'>('date'); 
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -68,38 +68,41 @@ export default function GalleryPage() {
       try {
         const projectsRef = collection(db, 'projects');
         let q;
-        // Assuming 'createdAt' field exists and is a Firestore Timestamp
         if (sortBy === 'date') {
           q = query(projectsRef, orderBy('createdAt', 'desc'));
         } else {
-          q = query(projectsRef); 
+          q = query(projectsRef, orderBy('createdAt', 'desc')); // Default to createdAt if other sorts not implemented
         }
         
         const querySnapshot = await getDocs(q);
-        const fetchedProjects = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
+        const fetchedProjects = querySnapshot.docs.map(docSnap => {
+          const data = docSnap.data();
+          // Robust mapping with defaults
+          const project: Project = {
+            id: docSnap.id,
             title: data.title || "Untitled Project",
             description: data.description || "No description provided.",
-            tags: Array.isArray(data.tags) ? data.tags : [],
+            tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
             previewImageUrl: data.previewImageUrl || FALLBACK_CARD_IMAGE_URL,
-            dataAiHint: data.dataAiHint || "project preview",
-            category: data.category || "Web App", // Default category
+            dataAiHint: data.dataAiHint || (data.title ? data.title.toLowerCase().split(' ').slice(0,2).join(' ') : "project preview"),
+            category: (CATEGORIES.includes(data.category) ? data.category : 'Web App') as Category,
             creatorId: data.creatorId || "unknown_creator",
             creatorName: data.creatorName || "Unknown Creator",
             uploadDate: data.uploadDate || new Date().toISOString(),
             isFeatured: data.isFeatured || false,
             projectUrl: data.projectUrl || "",
-            techStack: Array.isArray(data.techStack) ? data.techStack : [],
+            techStack: Array.isArray(data.techStack) ? data.techStack.filter(Boolean) : [],
             likeCount: typeof data.likeCount === 'number' ? data.likeCount : 0,
-            createdAt: data.createdAt || null, // Handle if createdAt is missing
-          } as Project;
+            createdAt: data.createdAt || null,
+          };
+          if (!project.title) console.warn(`Project ${project.id} missing title.`);
+          if (!project.previewImageUrl || project.previewImageUrl === FALLBACK_CARD_IMAGE_URL) console.warn(`Project ${project.id} using fallback image.`);
+          return project;
         });
         setAllProjects(fetchedProjects);
       } catch (error: any) {
         console.error("Error fetching projects: ", error);
-        const errorMessage = `Failed to load projects: ${error.message}. Please check Firestore rules or network.`;
+        const errorMessage = `Failed to load projects: ${error.message}. Check Firestore rules or network.`;
         setFetchError(errorMessage);
         setToastMessageContent({
           title: 'Error Loading Projects',
@@ -116,13 +119,13 @@ export default function GalleryPage() {
 
    useEffect(() => {
     if (toastMessageContent) {
-      setTimeout(() => { // Defer toast call
+      setTimeout(() => {
         toast({
           title: toastMessageContent.title,
           description: toastMessageContent.description,
           variant: toastMessageContent.variant,
         });
-        setToastMessageContent(null); // Reset after showing
+        setToastMessageContent(null); 
       }, 0);
     }
   }, [toastMessageContent, toast]);
@@ -137,10 +140,10 @@ export default function GalleryPage() {
         if (ALLOWED_MODAL_HOSTNAMES.includes(url.hostname)) {
           imageUrlToUseInModal = project.previewImageUrl;
         } else {
-          console.warn(`Modal: Hostname ${url.hostname} not allowed for ${project.title}. Using fallback.`);
+          console.warn(`Modal: Hostname ${url.hostname} for project "${project.title}" not in ALLOWED_MODAL_HOSTNAMES. Using fallback.`);
         }
       } catch (e) {
-        console.warn(`Modal: Invalid project.previewImageUrl for ${project.title}: ${project.previewImageUrl}. Using fallback.`);
+        console.warn(`Modal: Invalid project.previewImageUrl for "${project.title}": ${project.previewImageUrl}. Using fallback.`);
       }
     }
     setModalImageUrl(imageUrlToUseInModal);
@@ -166,22 +169,20 @@ export default function GalleryPage() {
     const projectRef = doc(db, "projects", projectId);
     let likeChange = 0;
     let toastTitle = "";
-    let toastDescription = "";
 
     const newLikedIds = new Set(likedProjectIds);
     if (newLikedIds.has(projectId)) {
       newLikedIds.delete(projectId);
-      likeChange = -1; // Decrement
+      likeChange = -1; 
       toastTitle = "Project Unliked";
-      toastDescription = "Your unlike has been recorded.";
     } else {
       newLikedIds.add(projectId);
-      likeChange = 1; // Increment
+      likeChange = 1; 
       toastTitle = "Project Liked!";
-      toastDescription = "Thanks for your feedback!";
     }
     setLikedProjectIds(newLikedIds);
 
+    // Optimistic UI update
     setAllProjects(prevProjects =>
       prevProjects.map(p =>
         p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
@@ -195,7 +196,7 @@ export default function GalleryPage() {
       await updateDoc(projectRef, {
         likeCount: increment(likeChange)
       });
-      toast({ title: toastTitle, description: `${toastDescription} Like count updated.`, duration: 2000 });
+      toast({ title: toastTitle, description: `Like count updated in database.`, duration: 2000 });
     } catch (error: any) {
       console.error("Error updating like count: ", error);
       toast({
@@ -205,8 +206,8 @@ export default function GalleryPage() {
       });
       // Revert optimistic UI update on error
       const revertedLikedIds = new Set(likedProjectIds);
-      if (likeChange === 1) revertedLikedIds.delete(projectId); // Was an add, so remove
-      else if (likeChange === -1) revertedLikedIds.add(projectId); // Was a remove, so add back
+      if (likeChange === 1) revertedLikedIds.delete(projectId); 
+      else if (likeChange === -1) revertedLikedIds.add(projectId); 
       setLikedProjectIds(revertedLikedIds);
 
       setAllProjects(prevProjects =>
@@ -223,8 +224,8 @@ export default function GalleryPage() {
   const filteredProjects = allProjects.filter(project => {
     const categoryMatch = activeCategory === 'All' || project.category === activeCategory;
     const searchMatch = 
-      project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.creatorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (project.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (project.creatorName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
       project.techStack?.some(tech => tech.toLowerCase().includes(searchTerm.toLowerCase()));
     return categoryMatch && searchMatch;
@@ -272,6 +273,7 @@ export default function GalleryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="date" className="flex items-center text-base py-2"><CalendarDays className="w-4 h-4 mr-2" />Most Recent</SelectItem>
+            {/* <SelectItem value="likes" className="text-base py-2">Most Liked (Coming Soon)</SelectItem> */}
           </SelectContent>
         </Select>
       </div>
@@ -349,7 +351,10 @@ export default function GalleryPage() {
                   layout="fill"
                   objectFit="contain"
                   data-ai-hint={selectedProject.dataAiHint || "project details"}
-                  onError={() => { setModalImageUrl(FALLBACK_MODAL_IMAGE_URL); }}
+                  onError={() => { 
+                    console.warn(`Modal: Error loading image ${selectedProject.previewImageUrl} for project ${selectedProject.title}. Using fallback.`);
+                    setModalImageUrl(FALLBACK_MODAL_IMAGE_URL); 
+                  }}
                   unoptimized={!ALLOWED_MODAL_HOSTNAMES.some(host => modalImageUrl.startsWith(`https://${host}`))}
                 />
               </div>
