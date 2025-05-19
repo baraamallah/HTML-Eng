@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, writeBatch, query, where, serverTimestamp } from 'firebase/firestore';
-import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_SITE_SETTINGS, CATEGORIES } from '@/lib/constants'; // CATEGORIES import might be needed if project editing gets more complex
+import { MOCK_CREATORS, MOCK_PROJECTS, MOCK_SITE_SETTINGS, CATEGORIES } from '@/lib/constants';
 import Link from 'next/link';
 
 const ADMIN_UID = "Jiz18K1A6xewOuEnSGPb1ybZkUF3"; 
@@ -45,44 +45,61 @@ export default function AdminSettingsPage() {
   const [editingCreatorId, setEditingCreatorId] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      if (user) {
-        if (user.uid === ADMIN_UID) {
-          setIsAdmin(true);
-          fetchAdminData(user);
+    setIsLoadingAuth(true);
+    if (auth && typeof auth.onAuthStateChanged === 'function') {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setCurrentUser(user);
+        if (user) {
+          if (user.uid === ADMIN_UID) {
+            setIsAdmin(true);
+            fetchAdminData(user);
+          } else {
+            setIsAdmin(false);
+            toast({ title: 'Access Denied', description: 'This account is not authorized for admin access.', variant: 'destructive' });
+          }
         } else {
           setIsAdmin(false);
-          toast({ title: 'Access Denied', description: 'This account is not authorized for admin access.', variant: 'destructive' });
+          // Reset to mock values if user logs out or is not admin
+          setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
+          setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
+          setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
+          setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
+          setCreators(MOCK_CREATORS);
+          setProjects(MOCK_PROJECTS);
+          clearCreatorForm();
+          setIsEditingCreator(false);
+          setEditingCreatorId(null);
         }
-      } else {
-        setIsAdmin(false);
-        // Reset to mock values if user logs out or is not admin
-        setSiteTitle(MOCK_SITE_SETTINGS.siteTitle);
-        setNavHomeLink(MOCK_SITE_SETTINGS.navHomeLink);
-        setNavHomeHref(MOCK_SITE_SETTINGS.navHomeHref);
-        setAboutPageContent(MOCK_SITE_SETTINGS.aboutPageContent);
-        setCreators(MOCK_CREATORS);
-        setProjects(MOCK_PROJECTS);
-        clearCreatorForm();
-        setIsEditingCreator(false);
-        setEditingCreatorId(null);
-      }
+        setIsLoadingAuth(false);
+      });
+      return () => unsubscribe();
+    } else {
+      console.error("Firebase Auth is not initialized properly. Admin page cannot function.");
+      toast({
+        title: "Authentication Service Error",
+        description: "Firebase Authentication is not available. Please check your Firebase configuration and ensure environment variables are set correctly in your deployment.",
+        variant: "destructive",
+        duration: 10000, // Keep it longer
+      });
       setIsLoadingAuth(false);
-    });
-    return () => unsubscribe();
+      // Keep isAdmin false, currentUser null. The page will render the "Not Logged In" state.
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Toast is stable, no need to add as dependency
+  }, []); 
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
+    if (!auth || typeof auth.signInWithEmailAndPassword !== 'function') {
+       toast({ title: 'Login Failed', description: 'Authentication service is not available.', variant: 'destructive' });
+       return;
+    }
     setIsLoadingAuth(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: 'Login Successful', description: 'Welcome, Admin!' });
-      // onAuthStateChanged will handle fetching data
+      // onAuthStateChanged will handle fetching data and setting isAdmin
     } catch (error: any) {
-      toast({ title: 'Login Failed', description: error.message, variant: 'destructive' });
+      toast({ title: 'Login Failed', description: error.message || 'Invalid credentials or service error.', variant: 'destructive' });
       setIsAdmin(false); 
       setIsLoadingAuth(false);
     }
@@ -128,9 +145,9 @@ export default function AdminSettingsPage() {
           id: cDoc.id, 
           name: cDoc.data().name || "Unnamed Creator",
           photoUrl: cDoc.data().photoUrl || `https://placehold.co/200x200.png?text=User`,
-          dataAiHint: cDoc.data().dataAiHint || "creator photo",
-          bio: cDoc.data().bio || "",
-          location: cDoc.data().location || "",
+          dataAiHint: cDoc.data().dataAiHint || (cDoc.data().name ? cDoc.data().name.toLowerCase().split(' ').slice(0,2).join(' ') : "creator photo"),
+          bio: cDoc.data().bio || "No bio provided.",
+          location: cDoc.data().location || "Location not set.",
           githubUsername: cDoc.data().githubUsername || "",
           linkedInProfile: cDoc.data().linkedInProfile || "",
           personalWebsite: cDoc.data().personalWebsite || "",
@@ -141,6 +158,9 @@ export default function AdminSettingsPage() {
         creatorsLoadedFromFirestore = true;
       } else {
          setCreators(MOCK_CREATORS); 
+         if(MOCK_CREATORS.length === 0) {
+            toast({ title: 'No Creators', description: 'No creators found in Firestore, and local mock data is empty.', duration: 4000 });
+         }
       }
 
       // Fetch Projects
@@ -150,7 +170,7 @@ export default function AdminSettingsPage() {
         return { 
             id: pDoc.id, 
             title: data.title || "Untitled Project",
-            description: data.description || "",
+            description: data.description || "No description provided.",
             tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
             previewImageUrl: data.previewImageUrl || `https://placehold.co/300x200.png?text=No+Preview`,
             dataAiHint: data.dataAiHint || (data.title ? data.title.toLowerCase().split(' ').slice(0,2).join(' ') : "project preview"),
@@ -170,12 +190,15 @@ export default function AdminSettingsPage() {
         projectsLoadedFromFirestore = true;
       } else {
         setProjects(MOCK_PROJECTS); 
+        if(MOCK_PROJECTS.length === 0) {
+            toast({ title: 'No Projects', description: 'No projects found in Firestore, and local mock data is empty.', duration: 4000 });
+         }
       }
 
       let statusMessages = [];
       statusMessages.push(siteSettingsLoaded ? "Site settings loaded from Firestore." : "Using default site settings; save to create in Firestore.");
-      statusMessages.push(creatorsLoadedFromFirestore ? "Creators loaded from Firestore." : "Using local mock creators (Firestore empty or no data).");
-      statusMessages.push(projectsLoadedFromFirestore ? "Projects loaded from Firestore." : "Using local mock projects (Firestore empty or no data).");
+      statusMessages.push(creatorsLoadedFromFirestore ? "Creators loaded from Firestore." : (MOCK_CREATORS.length > 0 ? "Using local mock creators (Firestore empty or no data)." : "No creators in Firestore or local mocks."));
+      statusMessages.push(projectsLoadedFromFirestore ? "Projects loaded from Firestore." : (MOCK_PROJECTS.length > 0 ? "Using local mock projects (Firestore empty or no data)." : "No projects in Firestore or local mocks."));
       
       toast({ title: 'Admin Data Status', description: statusMessages.join(' '), duration: 7000 });
 
@@ -192,10 +215,15 @@ export default function AdminSettingsPage() {
   };
   
   const handleLogout = async () => {
+    if (!auth || typeof auth.signOut !== 'function') {
+       toast({ title: 'Logout Failed', description: 'Authentication service is not available.', variant: 'destructive' });
+       return;
+    }
     setIsLoadingAuth(true);
     try {
       await signOut(auth);
       toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
+      // onAuthStateChanged will reset isAdmin and other states
     } catch (error: any) {      
       toast({ title: 'Logout Failed', description: error.message, variant: 'destructive' });
     } finally {
@@ -245,18 +273,22 @@ export default function AdminSettingsPage() {
       return;
     }
     
-    const creatorDataToUpdate = { 
-      name: creatorForm.name || '', 
-      photoUrl: creatorForm.photoUrl || `https://placehold.co/200x200.png?text=${encodeURIComponent(creatorForm.name?.split(' ')[0] || 'User')}`, 
-      dataAiHint: creatorForm.name ? (creatorForm.name.toLowerCase().split(' ').slice(0,2).join(' ') || "creator photo") : "creator photo",
-      bio: creatorForm.bio || '',
-      githubUsername: creatorForm.githubUsername || '',
-      linkedInProfile: creatorForm.linkedInProfile || '',
-      personalWebsite: creatorForm.personalWebsite || '',
-      location: creatorForm.location || '', 
+    const creatorDataToUpdate: Partial<CreatorType> = { 
+      name: creatorForm.name || undefined, 
+      photoUrl: creatorForm.photoUrl || undefined, 
+      dataAiHint: creatorForm.name ? (creatorForm.name.toLowerCase().split(' ').slice(0,2).join(' ') || "creator photo") : undefined,
+      bio: creatorForm.bio || undefined,
+      githubUsername: creatorForm.githubUsername || undefined,
+      linkedInProfile: creatorForm.linkedInProfile || undefined,
+      personalWebsite: creatorForm.personalWebsite || undefined,
+      location: creatorForm.location || undefined, 
     };
 
-    if (!creatorDataToUpdate.name) {
+    // Remove undefined fields to avoid overwriting existing data with undefined
+    Object.keys(creatorDataToUpdate).forEach(key => creatorDataToUpdate[key as keyof CreatorType] === undefined && delete creatorDataToUpdate[key as keyof CreatorType]);
+
+
+    if (!creatorDataToUpdate.name && !creators.find(c => c.id === editingCreatorId)?.name) {
       toast({ title: 'Validation Error', description: 'Creator name is required.', variant: 'destructive' });
       return;
     }
@@ -264,7 +296,7 @@ export default function AdminSettingsPage() {
     try {
       const creatorDocRef = doc(db, 'creators', editingCreatorId);
       await updateDoc(creatorDocRef, creatorDataToUpdate);
-      toast({ title: 'Creator Updated!', description: `${creatorForm.name} updated in Firestore. Refreshing list...`, icon: <Edit3 className="h-5 w-5" /> });
+      toast({ title: 'Creator Updated!', description: `${creatorForm.name || 'Creator'} updated in Firestore. Refreshing list...`, icon: <Edit3 className="h-5 w-5" /> });
       
       clearCreatorForm();
       setIsEditingCreator(false);
@@ -385,7 +417,7 @@ export default function AdminSettingsPage() {
           </CardContent>
           <CardFooter>
              <p className="text-xs text-muted-foreground text-center w-full">
-                Admin access is restricted to the UID: {ADMIN_UID.substring(0,10)+'...'}
+                Admin access is restricted. Only designated admin UIDs can manage settings.
              </p>
           </CardFooter>
         </Card>
@@ -510,7 +542,7 @@ export default function AdminSettingsPage() {
                   <Card className="border-primary border-2">
                     <CardHeader>
                       <CardTitle className="text-xl">Edit Creator: {creatorForm.name || 'Selected Creator'}</CardTitle>
-                      <CardDescription>Modify the details for this creator.</CardDescription>
+                      <CardDescription>Modify the details for this creator. Creators are automatically added upon site sign-up.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
