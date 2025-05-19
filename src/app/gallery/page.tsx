@@ -35,7 +35,7 @@ const CategoryIcon = ({ category, className }: { category: Category, className?:
 
 const FALLBACK_MODAL_IMAGE_URL = 'https://placehold.co/800x450.png?text=Preview+Error';
 const FALLBACK_CARD_IMAGE_URL = 'https://placehold.co/300x200.png?text=No+Preview';
-const ALLOWED_MODAL_HOSTNAMES = ['placehold.co', 'firebasestorage.googleapis.com'];
+const ALLOWED_MODAL_HOSTNAMES = ['placehold.co', 'firebasestorage.googleapis.com']; // For images in the modal
 
 interface ToastMessage {
   title: string;
@@ -68,16 +68,12 @@ export default function GalleryPage() {
       try {
         const projectsRef = collection(db, 'projects');
         let q;
-        if (sortBy === 'date') {
-          q = query(projectsRef, orderBy('createdAt', 'desc'));
-        } else {
-          q = query(projectsRef, orderBy('createdAt', 'desc')); // Default to createdAt if other sorts not implemented
-        }
+        // Default sort by 'createdAt' (desc) which is set by serverTimestamp
+        q = query(projectsRef, orderBy('createdAt', 'desc'));
         
         const querySnapshot = await getDocs(q);
         const fetchedProjects = querySnapshot.docs.map(docSnap => {
           const data = docSnap.data();
-          // Robust mapping with defaults
           const project: Project = {
             id: docSnap.id,
             title: data.title || "Untitled Project",
@@ -93,10 +89,10 @@ export default function GalleryPage() {
             projectUrl: data.projectUrl || "",
             techStack: Array.isArray(data.techStack) ? data.techStack.filter(Boolean) : [],
             likeCount: typeof data.likeCount === 'number' ? data.likeCount : 0,
-            createdAt: data.createdAt || null,
+            createdAt: data.createdAt || null, 
           };
-          if (!project.title) console.warn(`Project ${project.id} missing title.`);
-          if (!project.previewImageUrl || project.previewImageUrl === FALLBACK_CARD_IMAGE_URL) console.warn(`Project ${project.id} using fallback image.`);
+          if (!project.title || project.title === "Untitled Project") console.warn(`Project ${project.id} has default/missing title.`);
+          if (!project.previewImageUrl || project.previewImageUrl === FALLBACK_CARD_IMAGE_URL) console.warn(`Project ${project.id} using fallback image or missing previewImageUrl.`);
           return project;
         });
         setAllProjects(fetchedProjects);
@@ -115,11 +111,11 @@ export default function GalleryPage() {
     };
 
     fetchProjects();
-  }, [sortBy]);
+  }, [sortBy]); // No need for toast in dependency array
 
    useEffect(() => {
     if (toastMessageContent) {
-      setTimeout(() => {
+      setTimeout(() => { // Ensure toast is called after current render cycle
         toast({
           title: toastMessageContent.title,
           description: toastMessageContent.description,
@@ -140,10 +136,12 @@ export default function GalleryPage() {
         if (ALLOWED_MODAL_HOSTNAMES.includes(url.hostname)) {
           imageUrlToUseInModal = project.previewImageUrl;
         } else {
-          console.warn(`Modal: Hostname ${url.hostname} for project "${project.title}" not in ALLOWED_MODAL_HOSTNAMES. Using fallback.`);
+          console.warn(`Modal: Hostname ${url.hostname} for project "${project.title}" not in ALLOWED_MODAL_HOSTNAMES. Using fallback: ${FALLBACK_MODAL_IMAGE_URL}`);
+          imageUrlToUseInModal = FALLBACK_MODAL_IMAGE_URL; // Ensure fallback for unallowed hosts
         }
       } catch (e) {
-        console.warn(`Modal: Invalid project.previewImageUrl for "${project.title}": ${project.previewImageUrl}. Using fallback.`);
+        console.warn(`Modal: Invalid project.previewImageUrl for "${project.title}": ${project.previewImageUrl}. Using fallback: ${FALLBACK_MODAL_IMAGE_URL}`);
+        imageUrlToUseInModal = FALLBACK_MODAL_IMAGE_URL; // Ensure fallback for invalid URLs
       }
     }
     setModalImageUrl(imageUrlToUseInModal);
@@ -182,7 +180,6 @@ export default function GalleryPage() {
     }
     setLikedProjectIds(newLikedIds);
 
-    // Optimistic UI update
     setAllProjects(prevProjects =>
       prevProjects.map(p =>
         p.id === projectId ? { ...p, likeCount: Math.max(0, (p.likeCount || 0) + likeChange) } : p
@@ -346,13 +343,13 @@ export default function GalleryPage() {
             <div className="flex-grow overflow-y-auto space-y-6 p-1 pr-3">
               <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-2xl mt-2 bg-muted">
                 <Image
-                  src={modalImageUrl}
+                  src={modalImageUrl} // Already uses state with fallback logic
                   alt={selectedProject.title}
                   layout="fill"
                   objectFit="contain"
                   data-ai-hint={selectedProject.dataAiHint || "project details"}
                   onError={() => { 
-                    console.warn(`Modal: Error loading image ${selectedProject.previewImageUrl} for project ${selectedProject.title}. Using fallback.`);
+                    console.warn(`Modal: Error loading image ${selectedProject.previewImageUrl} for project ${selectedProject.title}. Using explicit fallback: ${FALLBACK_MODAL_IMAGE_URL}`);
                     setModalImageUrl(FALLBACK_MODAL_IMAGE_URL); 
                   }}
                   unoptimized={!ALLOWED_MODAL_HOSTNAMES.some(host => modalImageUrl.startsWith(`https://${host}`))}

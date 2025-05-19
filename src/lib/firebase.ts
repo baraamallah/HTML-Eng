@@ -5,16 +5,15 @@ import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
-// Configuration directly provided by the user
+// These are expected to be set in your .env.local file or deployment environment
 const firebaseConfig = {
-  apiKey: "AIzaSyDelN4gM_U9wAyFUIiBvMI5piWfhkfgiFo",
-  authDomain: "devportfolio-hub.firebaseapp.com",
-  // databaseURL: "https://devportfolio-hub-default-rtdb.firebaseio.com", // Not needed for Firestore
-  projectId: "devportfolio-hub",
-  storageBucket: "devportfolio-hub.appspot.com", // Corrected from devportfolio-hub.firebasestorage.app
-  messagingSenderId: "834909353622",
-  appId: "1:834909353622:web:305f430d3c0698597d74b7",
-  measurementId: "G-KDKWHPVWXP" // Optional
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // Optional
 };
 
 let app: FirebaseApp;
@@ -23,11 +22,24 @@ let db: Firestore;
 let storage: FirebaseStorage;
 
 if (typeof window !== 'undefined') { // Ensure Firebase is initialized only on the client-side
-  if (getApps().length === 0) {
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    console.error(
+      'Firebase API Key or Project ID is missing. Please check your .env.local file or deployment environment variables (NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_PROJECT_ID).'
+    );
+    // @ts-ignore - Assign mock objects if config is incomplete to prevent app crash
+    app = { name: "mock-config-missing-app", options: {}, automaticDataCollectionEnabled: false } as FirebaseApp;
+    // @ts-ignore
+    auth = { type: 'auth-mock-config-missing' } as Auth;
+    // @ts-ignore
+    db = { type: 'firestore-mock-config-missing' } as Firestore;
+    // @ts-ignore
+    storage = { type: 'storage-mock-config-missing' } as FirebaseStorage;
+
+  } else if (getApps().length === 0) {
     try {
       app = initializeApp(firebaseConfig);
     } catch (e) {
-      console.error("Firebase initializeApp failed with hardcoded config:", e);
+      console.error("Firebase initializeApp failed:", e);
       // @ts-ignore
       app = { name: "mock-initialization-failed-app", options: {}, automaticDataCollectionEnabled: false } as FirebaseApp;
     }
@@ -37,19 +49,21 @@ if (typeof window !== 'undefined') { // Ensure Firebase is initialized only on t
 
   // Initialize services only if the app was properly initialized
   // @ts-ignore
-  if (app && app.name !== "mock-initialization-failed-app") {
+  if (app && app.name !== "mock-config-missing-app" && app.name !== "mock-initialization-failed-app") {
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
   } else {
-    // Fallback to mock objects if Firebase app wasn't properly initialized
+    // Ensure mock objects if app is still not properly initialized
     // @ts-ignore
-    auth = { type: 'auth-mock-client-init-failed' } as Auth;
+    if (!auth) auth = { type: 'auth-mock-client-init-failed' } as Auth;
     // @ts-ignore
-    db = { type: 'firestore-mock-client-init-failed' } as Firestore;
+    if (!db) db = { type: 'firestore-mock-client-init-failed' } as Firestore;
     // @ts-ignore
-    storage = { type: 'storage-mock-client-init-failed' } as FirebaseStorage;
-    console.warn("Firebase services (auth, db, storage) are using mock objects due to initialization failure with hardcoded config.");
+    if (!storage) storage = { type: 'storage-mock-client-init-failed' } as FirebaseStorage;
+    if (app.name !== "mock-config-missing-app") { // Avoid double logging if config was missing
+        console.warn("Firebase services (auth, db, storage) are using mock objects due to initialization failure. Check Firebase config.");
+    }
   }
 
 } else {
